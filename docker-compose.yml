@@ -1,0 +1,25 @@
+name: fiadito
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: fiadito-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-fiadito}
+      MYSQL_DATABASE: ${DB_NAME:-fiadito}
+      TZ: America/Lima
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=-05:00"]
+    ports:
+      # 3307 en el host para no chocar con un MySQL local (Workbench) en 3306
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-fiadito}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  db_data:

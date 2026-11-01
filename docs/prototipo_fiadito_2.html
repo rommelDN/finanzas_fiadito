@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiadito</title>
+<style>
+:root{
+  --bg:#F3F5F4;--card:#FFFFFF;--text:#14201B;--muted:#65736C;--line:#E2E7E4;--head:#F7F9F8;
+  --pri:#0E7C66;--pri-d:#0A5C4C;--pri-s:#E2F2ED;--side:#0F2A23;--side-t:#A9C2B9;--side-a:#1C4A3D;
+  --red:#C0392B;--red-s:#FBEAE8;--amb:#A35A00;--amb-s:#FDF1DC;--ok:#167A4A;--ok-s:#E3F4EA;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.4}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit}
+.app{display:flex;min-height:100vh}
+aside{width:248px;flex-shrink:0;background:var(--side);color:var(--side-t);display:flex;flex-direction:column;padding:24px 16px 20px;position:sticky;top:0;height:100vh}
+.logo{display:flex;gap:10px;align-items:center;padding:0 8px 24px}
+.logo .sq{width:36px;height:36px;border-radius:10px;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:700;font-size:20px}
+.logo b{display:block;color:#fff;font-size:20px}
+.logo small{font-size:12px}
+nav a{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:8px;font-weight:500;margin-bottom:4px}
+nav a:hover{background:rgba(255,255,255,.05)}
+nav a.on{background:var(--side-a);color:#fff;font-weight:600}
+nav svg{width:18px;height:18px;flex-shrink:0}
+.user{margin-top:auto;border-top:1px solid var(--side-a);padding-top:16px;display:flex;gap:10px;align-items:center}
+.av{width:36px;height:36px;border-radius:50%;background:var(--side-a);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px}
+.user b{color:#fff;font-size:13px;display:block}
+.user small{font-size:12px}
+main{flex:1;padding:28px 40px 40px;min-width:0}
+.crumb{color:var(--muted);font-size:13px;font-weight:500;margin-bottom:8px}
+.hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.hdr .t{flex:1;min-width:220px}
+h1{font-size:26px;font-weight:700}
+.sub{color:var(--muted);margin-top:4px}
+.btn{border:1px solid var(--line);background:#fff;padding:10px 16px;border-radius:8px;font-weight:600;white-space:nowrap}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.pri:hover{background:var(--pri-d)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.card h2{font-size:16px;font-weight:700;margin-bottom:14px}
+.row{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+.row>*{flex:1;min-width:260px}
+.side340{flex:0 0 340px!important;min-width:280px}
+.kpi .l{color:var(--muted);font-size:13px;font-weight:500}
+.kpi .v{font-size:26px;font-weight:700;margin:4px 0}
+.kpi .s{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse}
+th{background:var(--head);color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;text-align:left;padding:10px 12px}
+th:first-child{border-radius:8px 0 0 8px}th:last-child{border-radius:0 8px 8px 0}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr.click{cursor:pointer}tbody tr.click:hover{background:var(--head)}
+.r{text-align:right;white-space:nowrap}.b{font-weight:600}.m{color:var(--muted)}.sm{font-size:12px}
+tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:none}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:var(--ok-s);color:var(--ok)}.red{background:var(--red-s);color:var(--red)}.amb{background:var(--amb-s);color:var(--amb)}.pri-b{background:var(--pri-s);color:var(--pri)}.gray{background:var(--head);color:var(--muted)}
+.note{padding:12px 14px;border-radius:8px;font-size:13px;font-weight:500;margin-top:14px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0}
+.kv span:first-child{color:var(--muted);font-size:13px}
+.kv span:last-child{font-weight:600;text-align:right}
+.kv.big span:last-child{color:var(--pri);font-size:18px;font-weight:700}
+.f{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;flex:1;min-width:140px}
+.f label{font-size:13px;font-weight:500}
+.f input,.f select{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;width:100%}
+.f input:focus,.f select:focus{outline:2px solid var(--pri);border-color:var(--pri)}
+.f .h{font-size:12px;color:var(--muted)}
+.frow{display:flex;gap:16px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--head);border-radius:8px;padding:4px;gap:4px}
+.seg button{border:1px solid transparent;background:none;padding:7px 14px;border-radius:6px;color:var(--muted);font-weight:500}
+.seg button.on{background:#fff;border-color:var(--line);color:var(--pri);font-weight:600}
+.seg button:disabled{color:#c9d1cd;cursor:not-allowed}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;background:var(--pri)}
+.prod{display:flex;gap:10px;align-items:center}
+.thumb{width:36px;height:36px;border-radius:8px;background:var(--pri-s);color:var(--pri);display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0}
+.qty{display:inline-flex;border:1px solid var(--line);border-radius:6px;align-items:center}
+.qty button{border:none;background:none;width:26px;height:28px;color:var(--muted)}
+.qty span{min-width:24px;text-align:center;font-weight:600}
+.due{display:flex;gap:12px;align-items:center;padding:8px 0}
+.due .d{width:48px;height:48px;border-radius:8px;background:var(--pri-s);color:var(--pri);display:grid;place-items:center;text-align:center;line-height:1.1}
+.due .d b{font-size:16px;display:block}.due .d small{font-size:10px;font-weight:600}
+.flow{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.flow .card{flex:1;min-width:150px;padding:16px}
+.flow .n{width:28px;height:28px;border-radius:50%;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:700;margin-bottom:10px}
+.doc{background:#fff;border:1px solid var(--line);border-radius:4px;padding:32px 36px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.login{display:flex;min-height:100vh}
+.login .brand{width:620px;background:var(--side);color:var(--side-t);padding:56px 64px 48px;display:flex;flex-direction:column;justify-content:space-between}
+.login .brand h2{color:#fff;font-size:40px;line-height:1.15;max-width:480px;margin-bottom:20px}
+.login .formz{flex:1;display:grid;place-items:center;padding:24px}
+.login .card{width:420px;max-width:100%;padding:40px}
+.chk{display:flex;gap:10px;align-items:center;color:#fff;margin-top:12px;font-weight:500}
+.chk svg{width:18px;height:18px;color:#5FD3B3}
+.mb20{margin-bottom:20px}.mt8{margin-top:8px}
+@media (max-width:900px){
+  .app{flex-direction:column}
+  aside{width:100%;height:auto;position:static;padding:16px}
+  nav{display:flex;flex-wrap:wrap;gap:4px}nav a{margin:0}
+  .user{display:none}
+  main{padding:20px 16px}
+  .login{flex-direction:column}.login .brand{width:100%;padding:32px 24px}
+  .table-wrap{overflow-x:auto}
+}
+.tip{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--pri-s);color:var(--pri);font-size:11px;font-weight:700;margin-left:6px;cursor:help;position:relative;vertical-align:middle}
+.tip:hover::after{content:attr(data-h);position:absolute;left:22px;top:-6px;z-index:20;width:240px;background:var(--side);color:#fff;font-weight:400;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+@media print{aside,.btn{display:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ==================== Motor de cálculo (según 6.3) ====================
+const red2=x=>Math.round((x+1e-9)*100)/100;
+const s2=x=>red2(x).toFixed(2);
+const soles=x=>'S/ '+red2(x).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=(x,d=2)=>x.toFixed(d)+'%';
+const PER={DIARIA:1,QUINCENAL:15,MENSUAL:30,BIMESTRAL:60,TRIMESTRAL:90,CUATRIMESTRAL:120,SEMESTRAL:180,ANUAL:360};
+const lastDay=(y,m)=>new Date(y,m,0).getDate();
+const mk=(y,m,d)=>{while(m>12){m-=12;y++}while(m<1){m+=12;y--}return{y,m,d:Math.min(d,lastDay(y,m))}};
+const addM=(f,k,dia)=>mk(f.y,f.m+k,dia??f.d);
+const d360=(a,b)=>360*(b.y-a.y)+30*(b.m-a.m)+(Math.min(b.d,30)-Math.min(a.d,30));
+const fmt=f=>String(f.d).padStart(2,'0')+'/'+String(f.m).padStart(2,'0')+'/'+f.y;
+const cmp=(a,b)=>(a.y-b.y)||(a.m-b.m)||(a.d-b.d);
+const parseF=s=>{const[d,m,y]=s.split('/').map(Number);return{y,m,d}};
+const teD=(te,p,d)=>Math.pow(1+te/100,d/p)-1;
+
+function ciclo(cli,f,hh,mm){ // fechaCorteCiclo y fechaFinGracia
+  let corte=mk(f.y,f.m,cli.corte);
+  const despues=cmp(f,corte)>0||(cmp(f,corte)===0&&(hh*60+mm)>23*60+59);
+  if(despues)corte=mk(f.y,f.m+1,cli.corte);
+  let fin=mk(corte.y,corte.m,cli.pago);
+  if(cmp(fin,corte)<=0)fin=mk(corte.y,corte.m+1,cli.pago);
+  return{corte,fin};
+}
+function calcCompra(cli,fecha,hh,mm,items,n){
+  const C=red2(items.reduce((s,[c,q])=>s+red2(q*PROD[c].pc),0));
+  const{corte,fin}=ciclo(cli,fecha,hh,mm);
+  const dg=d360(fecha,fin);
+  const tg=teD(cli.te,cli.p,dg);
+  const Cg=red2(C*(1+tg));
+  const ig=red2(Cg-C);
+  const tem=teD(cli.te,cli.p,30);
+  const R=tem>0?red2(Cg*tem/(1-Math.pow(1+tem,-n))):red2(Cg/n);
+  let S=Cg;const cuotas=[];
+  for(let k=1;k<=n;k++){
+    const I=red2(S*tem);let A,Rk;
+    if(k<n){A=red2(R-I);Rk=R}else{A=S;Rk=red2(A+I)}
+    cuotas.push({k,venc:addM(fin,k,cli.pago),si:S,I,A,R:Rk,sf:red2(S-A)});S=red2(S-A);
+  }
+  // TCEA: C = Σ R_k / (1+t)^((dg+30k)/360)
+  const f=t=>cuotas.reduce((s,q)=>s+q.R/Math.pow(1+t,(dg+30*q.k)/360),0)-C;
+  let lo=0,hi=5;for(let i=0;i<200;i++){const mi=(lo+hi)/2;f(mi)>0?lo=mi:hi=mi}
+  const tI=red2(ig+cuotas.reduce((s,q)=>s+q.I,0));
+  return{C,corte,fin,dg,tg,Cg,ig,tem,R,cuotas,tcea:lo*100,tI,tP:red2(C+tI)};
+}
+
+// ==================== Datos de prueba (6.4) ====================
+const PROD={
+ P001:{d:'Arroz extra 5 kg',m:'Costeño',pr:'Dist. Santa Rosa',u:'UND',pc:22.00,pcr:24.00,fia:true,max:6,act:true},
+ P002:{d:'Aceite vegetal 1 L',m:'Primor',pr:'Dist. Santa Rosa',u:'UND',pc:9.50,pcr:10.50,fia:true,max:6,act:true},
+ P003:{d:'Leche evaporada 400 g',m:'Gloria',pr:'Dist. Santa Rosa',u:'UND',pc:4.20,pcr:4.60,fia:true,max:6,act:true},
+ P004:{d:'Atún en aceite 170 g',m:'Florida',pr:'Dist. Santa Rosa',u:'UND',pc:5.00,pcr:5.50,fia:true,max:6,act:true},
+ P005:{d:'Azúcar rubia 1 kg',m:'Cartavio',pr:'Dist. Santa Rosa',u:'KG',pc:3.30,pcr:3.60,fia:true,max:6,act:true},
+ P006:{d:'Detergente 2 kg',m:'Bolívar',pr:'Dist. Santa Rosa',u:'UND',pc:16.50,pcr:18.00,fia:true,max:6,act:true},
+ P007:{d:'Balón de gas 10 kg',m:'Solgas',pr:'Gasocentro Lima',u:'UND',pc:50.00,pcr:55.00,fia:true,max:2,act:true},
+ P008:{d:'Recarga celular S/ 10',m:'Claro',pr:'Claro Agente',u:'UND',pc:10.00,pcr:10.00,fia:false,max:1,act:true},
+ P009:{d:'Fideos spaghetti 500 g',m:'Don Vittorio',pr:'Dist. Santa Rosa',u:'UND',pc:2.80,pcr:3.00,fia:true,max:6,act:false}};
+const CLI={
+ rosa:{id:'rosa',n:'Rosa Quispe Huamán',ini:'RQ',dni:'45678901',te:6.1363551,per:'BIMESTRAL',tm:6.1208,perm:'SEMESTRAL',lim:1000,max:6,corte:20,pago:26},
+ carlos:{id:'carlos',n:'Carlos Mendoza Ríos',ini:'CM',dni:'41234567',te:20,per:'SEMESTRAL',tm:6,perm:'SEMESTRAL',lim:800,max:4,corte:25,pago:5},
+ mario:{id:'mario',n:'Mario Paredes Salas',ini:'MP',dni:'43219876',te:1.5105456,per:'QUINCENAL',tm:0.4007475,perm:'QUINCENAL',lim:600,max:4,corte:20,pago:26}};
+Object.values(CLI).forEach(c=>{c.p=PER[c.per];c.pm=PER[c.perm];c.tem=teD(c.te,c.p,30)*100;c.tea=teD(c.te,c.p,360)*100;c.team=teD(c.tm,c.pm,360)*100});
+const COMPRAS=[
+ ['CR1','rosa','15/09/2026',10,30,[['P001',2],['P002',2],['P003',6],['P004',4],['P005',2],['P006',1]],3],
+ ['CC1','carlos','27/09/2026',14,0,[['P007',1],['P001',2],['P002',1],['P004',4]],2],
+ ['CM1','mario','10/08/2026',9,0,[['P001',2],['P002',2],['P004',4],['P006',1]],3],
+ ['CM2','mario','03/09/2026',18,0,[['P007',1]],1],
+ ['CM3','mario','15/09/2026',11,0,[['P003',12],['P005',5],['P002',2]],2],
+ ['CM4','mario','24/09/2026',16,0,[['P001',1],['P005',2]],1]
+].map(([id,cli,f,hh,mm,items,n])=>({id,cli,fecha:f,hh,mm,items,n,...calcCompra(CLI[cli],parseF(f),hh,mm,items,n)}));
+// Mario pagó la cuota 1 de CM1 el 26/09/2026
+COMPRAS.find(c=>c.id==='CM1').cuotas[0].pagada=true;
+const HOY=parseF('02/10/2026');
+function deuda(cid){return red2(COMPRAS.filter(c=>c.cli===cid).reduce((s,c)=>s+c.Cg-c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.A,0),0))}
+function deudaAntes(cid,f,hh,mm){const key=x=>x.y*1e6+x.m*1e4+x.d*100;const t=key(f)*10000+hh*100+mm;return red2(COMPRAS.filter(c=>c.cli===cid&&key(parseF(c.fecha))*10000+c.hh*100+c.mm<t).reduce((s,c)=>s+c.Cg-c.cuotas.filter(q=>q.pagada&&cmp(q.venc,f)<=0).reduce((a,q)=>a+q.A,0),0))}
+function estado(cid,vencStr){const v=parseF(vencStr);const it=[];COMPRAS.filter(c=>c.cli===cid).forEach(c=>c.cuotas.forEach(q=>{if(!q.pagada&&cmp(q.venc,v)===0)it.push({c,q})}));const cap=red2(it.reduce((s,x)=>s+x.q.A,0)),int=red2(it.reduce((s,x)=>s+x.q.I,0));return{it,cap,int,total:red2(cap+int)}}
+function proxPago(cid){let best=null;COMPRAS.filter(c=>c.cli===cid).forEach(c=>c.cuotas.forEach(q=>{if(!q.pagada&&cmp(q.venc,HOY)>=0&&(!best||cmp(q.venc,best)<0))best=q.venc}));return best}
+
+// ==================== UI ====================
+const IC={home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',box:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',cart:'<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',wallet:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/>',sliders:'<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>',info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',check:'<path d="M20 6 9 17l-5-5"/>'};
+const ico=n=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[n]}</svg>`;
+const NAV=[['inicio','Inicio','home'],['clientes','Clientes','users'],['productos','Productos','box'],['compras','Compras','cart'],['pago','Pagos','wallet'],['estados','Estados de cuenta','file'],['parametros','Parámetros','sliders'],['flujo','Cómo funciona','info']];
+const badge=(t,c='ok')=>`<span class="badge ${c}">${t}</span>`;
+const hdr=(t,s,btns='',crumb='')=>`${crumb?`<div class="crumb">${crumb}</div>`:''}<div class="hdr"><div class="t"><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btns}</div>`;
+const two=(a,b)=>`<div class="b">${a}</div><div class="m sm">${b}</div>`;
+const prodCell=(c)=>`<div class="prod"><div class="thumb">${c}</div>${two(PROD[c].d,PROD[c].m+' · '+PROD[c].pr)}</div>`;
+const MES=['','ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
+const V={};
+V.inicio=()=>{
+  const cl=Object.values(CLI);
+  const tDeuda=red2(cl.reduce((s,c)=>s+deuda(c.id),0));const tLim=cl.reduce((s,c)=>s+c.lim,0);
+  const eR=estado('rosa','26/10/2026'),eM=estado('mario','26/10/2026');
+  const venc=[];COMPRAS.forEach(c=>c.cuotas.forEach(q=>{if(!q.pagada)venc.push({c,q})}));
+  const grp={};venc.forEach(({c,q})=>{const k=fmt(q.venc)+c.cli;(grp[k]=grp[k]||{v:q.venc,cli:c.cli,n:0,t:0}).n++;grp[k].t=red2(grp[k].t+q.R)});
+  const lista=Object.values(grp).sort((a,b)=>cmp(a.v,b.v)).slice(0,5);
+  return hdr('Buen día, Luis','Viernes 2 de octubre de 2026 · Próximo corte: 20/10/2026 23:59',`<a class="btn" href="#pago">Registrar pago</a><a class="btn pri" href="#nueva">+ Nueva compra</a>`)+
+  `<div class="row">
+    <div class="card kpi"><div class="l">Deuda por cobrar</div><div class="v">${soles(tDeuda)}</div><div class="s">Capital pendiente de 3 clientes</div></div>
+    <div class="card kpi"><div class="l">Crédito disponible</div><div class="v">${soles(tLim-tDeuda)}</div><div class="s">de ${soles(tLim)} en límites</div></div>
+    <div class="card kpi"><div class="l">Vence el 26/10</div><div class="v" style="color:var(--pri)">${soles(eR.total+eM.total)}</div><div class="s">Rosa Quispe y Mario Paredes</div></div>
+    <div class="card kpi"><div class="l">En mora</div><div class="v" style="color:var(--ok)">S/ 0.00</div><div class="s">Ningún cliente atrasado</div></div>
+  </div>
+  <div class="row">
+    <div style="flex:2"><div class="card mb20"><h2>Clientes</h2><div class="table-wrap"><table><thead><tr><th>Cliente</th><th class="r">Deuda</th><th class="r">Disponible</th><th class="r">TEA</th><th>Próximo pago</th><th>Estado</th></tr></thead><tbody>
+      ${cl.map(c=>{const d=deuda(c.id),pp=proxPago(c.id);return`<tr class="click" onclick="location.hash='cliente/${c.id}'"><td>${two(c.n,'DNI '+c.dni)}</td><td class="r">${soles(d)}</td><td class="r">${soles(c.lim-d)}</td><td class="r">${pct(c.tea)}</td><td>${pp?fmt(pp):'—'}</td><td>${badge('Al día')}</td></tr>`}).join('')}
+    </tbody></table></div></div>
+    <div class="card"><h2>Compras recientes</h2><div class="table-wrap"><table><thead><tr><th>Compra</th><th>Fecha</th><th>Cliente</th><th class="r">Cuotas</th><th class="r">Importe C</th></tr></thead><tbody>
+      ${[...COMPRAS].sort((a,b)=>cmp(parseF(b.fecha),parseF(a.fecha))).slice(0,4).map(c=>`<tr><td class="b">${c.id}</td><td>${c.fecha}</td><td>${CLI[c.cli].n}</td><td class="r">${c.n}</td><td class="r b">${soles(c.C)}</td></tr>`).join('')}
+    </tbody></table></div></div></div>
+    <div class="card side340"><h2>Próximos vencimientos</h2>
+      ${lista.map(g=>`<div class="due"><div class="d"><div><b>${String(g.v.d).padStart(2,'0')}</b><small>${MES[g.v.m]}</small></div></div><div style="flex:1">${two(CLI[g.cli].n,g.n+(g.n>1?' cuotas':' cuota'))}</div><div class="b">${soles(g.t)}</div></div>`).join('')}
+      <div class="note amb">El 20/10 a las 23:59 se generan los estados de cuenta. Las compras posteriores pasan al siguiente ciclo.</div>
+    </div>
+  </div>`;
+};
+
+V.clientes=()=>hdr('Clientes','3 clientes activos · límite total S/ 2,400.00',`<a class="btn pri" href="#nuevocliente">+ Nuevo cliente</a>`)+
+ `<div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Tasa efectiva pactada</th><th class="r">TEA</th><th class="r">Límite</th><th class="r">Deuda</th><th>Corte / pago</th><th>Estado</th></tr></thead><tbody>
+ ${Object.values(CLI).map(c=>`<tr class="click" onclick="location.hash='cliente/${c.id}'"><td>${two(c.n,'DNI '+c.dni)}</td><td>${two(c.te.toFixed(7)+'% '+c.per.toLowerCase(),'Mora '+c.tm.toFixed(7)+'% '+c.perm.toLowerCase())}</td><td class="r">${pct(c.tea)}</td><td class="r">${soles(c.lim)}</td><td class="r">${soles(deuda(c.id))}</td><td>día ${c.corte} / ${c.pago}</td><td>${badge('Al día')}</td></tr>`).join('')}
+ </tbody></table></div></div>`;
+
+V.cliente=(id)=>{
+  const c=CLI[id]||CLI.mario;const d=deuda(c.id);const pp=proxPago(c.id);const e=pp?estado(c.id,fmt(pp)):null;
+  const cs=COMPRAS.filter(x=>x.cli===c.id);
+  return hdr(c.n,'DNI '+c.dni+' · Moneda PEN · Privacidad aceptada (Ley 29733)',`<a class="btn" href="#nueva">Nueva compra</a><a class="btn pri" href="#pago">Registrar pago</a>`,'<a href="#clientes">Clientes</a>  /  '+c.n)+
+  `<div class="row">
+    <div class="card"><div class="m sm">Línea de crédito</div><div style="display:flex;gap:8px;align-items:baseline;margin-top:6px"><span style="font-size:30px;font-weight:700">${soles(d)}</span><span class="m">usados de ${soles(c.lim)}</span></div>
+      <div class="bar"><i style="width:${(d/c.lim*100).toFixed(1)}%"></i></div>
+      <div style="display:flex;gap:24px"><div>${two(soles(c.lim-d),'Disponible')}</div><div>${two(cs.length+' compras','Vigentes')}</div><div>${two('Máx. '+c.max+' cuotas','Por compra')}</div></div></div>
+    <div class="card"><div class="m sm" style="margin-bottom:8px">Condiciones de crédito (tasas efectivas)</div>
+      <div class="kv"><span>Tasa de interés</span><span>${c.te.toFixed(7)}% ${c.per.toLowerCase()}</span></div>
+      <div class="kv"><span>TEM / TEA</span><span>${c.tem.toFixed(7)}% / ${c.tea.toFixed(7)}%</span></div>
+      <div class="kv"><span>Tasa moratoria</span><span>${c.tm.toFixed(7)}% ${c.perm.toLowerCase()}</span></div>
+      <div class="kv"><span>Corte / pago</span><span>Día ${c.corte} (23:59) / día ${c.pago}</span></div></div>
+  </div>
+  <div class="row">
+    <div class="card" style="flex:2"><h2>Próximo pago ${pp?'· vence '+fmt(pp):''}</h2>
+      ${e&&e.it.length?`<div class="table-wrap"><table><thead><tr><th>Compra</th><th>Cuota</th><th class="r">Interés</th><th class="r">Amortización</th><th class="r">Importe</th></tr></thead><tbody>
+      ${e.it.map(x=>`<tr><td class="b">${x.c.id} · ${x.c.fecha}</td><td>${x.q.k} de ${x.c.n}</td><td class="r">${s2(x.q.I)}</td><td class="r">${s2(x.q.A)}</td><td class="r b">${s2(x.q.R)}</td></tr>`).join('')}
+      </tbody><tfoot><tr><td>Total</td><td></td><td class="r">${s2(e.int)}</td><td class="r">${s2(e.cap)}</td><td class="r" style="color:var(--pri)">${soles(e.total)}</td></tr></tfoot></table></div>`:'<p class="m">Sin cuotas pendientes.</p>'}
+      <div class="note amb">Se paga el total en una sola vez (no hay pagos parciales). Si paga después del vencimiento, se suma interés moratorio sobre el saldo vencido.</div></div>
+    <div class="card side340"><h2>Compras</h2>
+      ${cs.map(x=>{const pag=x.cuotas.filter(q=>q.pagada).length;return`<div style="border-top:1px solid var(--line);padding:12px 0"><div class="kv"><span class="b" style="color:var(--text);font-size:14px">${x.id} · ${x.fecha}</span><span>${soles(x.C)}</span></div><div class="kv"><span class="sm">${x.n} × ${s2(x.R)} · TCEA ${x.tcea.toFixed(2)}%</span><span>${pag?badge(pag+' de '+x.n+' pagada'):badge('Vigente','pri-b')}</span></div></div>`}).join('')}
+    </div>
+  </div>`;
+};
+
+V.nuevocliente=()=>hdr('Nuevo cliente','Registra sus datos y las condiciones del crédito (tasas efectivas)',`<a class="btn" href="#clientes">Cancelar</a><button class="btn pri" onclick="alert('Prototipo: el cliente no se guarda.')">Guardar cliente</button>`,'<a href="#clientes">Clientes</a>  /  Nuevo cliente')+
+ `<div class="row"><div style="flex:2">
+  <div class="card mb20"><h2>Datos del cliente</h2>
+   <div class="frow"><div class="f"><label>DNI</label><input value="45678901" maxlength="8"></div><div class="f"><label>Nombres</label><input value="Rosa"></div><div class="f"><label>Apellidos</label><input value="Quispe Huamán"></div></div>
+   <div class="frow"><div class="f"><label>Moneda</label><select><option>PEN</option><option>USD</option></select></div><div class="f"><label>Límite de crédito (S/)</label><input value="1000.00"></div><div class="f"><label>Máx. cuotas</label><input id="nc_max" value="6"></div></div></div>
+  <div class="row" style="margin-bottom:0">
+   <div class="card"><h2>Tasa efectiva compensatoria</h2>
+    <div class="f"><label>Tasa efectiva (%)</label><input id="nc_te" value="6.1363551" oninput="ncCalc()"></div>
+    <div class="f"><label>Periodo de la tasa</label><select id="nc_p" onchange="ncCalc()">${Object.keys(PER).map(k=>`<option ${k==='BIMESTRAL'?'selected':''}>${k}</option>`).join('')}</select></div>
+    <div id="nc_out" class="b sm" style="color:var(--ok)"></div></div>
+   <div class="card"><h2>Tasa efectiva moratoria</h2>
+    <div class="f"><label>Tasa efectiva (%)</label><input id="nc_tm" value="6.1208" oninput="ncCalc()"></div>
+    <div class="f"><label>Periodo de la tasa</label><select id="nc_pm" onchange="ncCalc()">${Object.keys(PER).map(k=>`<option ${k==='SEMESTRAL'?'selected':''}>${k}</option>`).join('')}</select></div>
+    <div id="nc_outm" class="b sm" style="color:var(--ok)"></div></div>
+  </div>
+  <label class="card" style="display:flex;gap:10px;align-items:center;margin-top:20px"><input type="checkbox" checked> El cliente acepta la política de privacidad y el tratamiento de sus datos personales (Ley 29733).</label>
+ </div>
+ <div class="side340"><div class="card mb20"><h2>Ciclo de pago</h2><div class="frow"><div class="f"><label>Día de corte</label><input value="20"></div><div class="f"><label>Día de pago</label><input value="26"></div></div><div class="f"><label>Hora de corte</label><input value="23:59"></div></div>
+  <div class="card"><h2>Lo que calcula la app</h2><div id="nc_kv"></div><div class="m sm mt8">TEM = (1 + i)^(30/p) − 1 · TEA = (1 + i)^(360/p) − 1</div></div></div></div>`;
+window.ncCalc=()=>{const te=+document.getElementById('nc_te').value||0,p=PER[document.getElementById('nc_p').value],tm=+document.getElementById('nc_tm').value||0,pm=PER[document.getElementById('nc_pm').value];
+ const tem=teD(te,p,30)*100,tea=teD(te,p,360)*100,team=teD(tm,pm,360)*100;
+ document.getElementById('nc_kv').innerHTML=`<div class="kv"><span>p (días de la tasa)</span><span>${p}</span></div><div class="kv"><span>pMora</span><span>${pm}</span></div><div class="kv"><span>TEM</span><span>${tem.toFixed(7)}%</span></div><div class="kv"><span>TEA mora</span><span>${team.toFixed(7)}%</span></div><div class="kv big"><span>TEA equivalente</span><span>${tea.toFixed(7)}%</span></div>`;
+ document.getElementById('nc_out').textContent=`TEA ${tea.toFixed(7)}% · se valida contra topeInteresTEA vigente`;
+ document.getElementById('nc_outm').textContent=`TEA mora ${team.toFixed(7)}% · se valida contra topeMoraTEA vigente`;};
+
+V.productos=()=>hdr('Productos','9 productos registrados · 8 activos',`<a class="btn pri" href="#producto">+ Nuevo producto</a>`)+
+ `<div class="card"><div class="table-wrap"><table><thead><tr><th>Producto</th><th>Unidad</th><th class="r">Precio contado</th><th class="r">Precio crédito (ref.)</th><th>Se fía</th><th class="r">Máx. cuotas</th><th>Estado</th></tr></thead><tbody>
+ ${Object.keys(PROD).map(k=>{const p=PROD[k];return`<tr class="click" onclick="location.hash='producto'"><td>${prodCell(k)}</td><td>${p.u}</td><td class="r b">${soles(p.pc)}</td><td class="r m">${soles(p.pcr)}</td><td>${p.fia?badge('Sí'):badge('No','red')}</td><td class="r">${p.max}</td><td>${p.act?badge('Activo'):badge('Inactivo','gray')}</td></tr>`}).join('')}
+ </tbody></table></div><div class="note pri-b">El capital de cada compra se calcula con el precio al contado (precioUnitarioAplicado). El precio de crédito es solo referencial.</div></div>`;
+
+V.producto=()=>hdr('Editar producto','Código P007',`<a class="btn" href="#productos">Cancelar</a><button class="btn pri" onclick="alert('Prototipo: el producto no se guarda.')">Guardar producto</button>`,'<a href="#productos">Productos</a>  /  P007 · Balón de gas 10 kg')+
+ `<div class="row"><div class="card" style="flex:2"><h2>Información del producto</h2>
+  <div class="frow"><div class="f"><label>Código</label><input value="P007" disabled></div><div class="f"><label>Unidad de medida</label><select><option>UND</option><option>KG</option><option>LT</option><option>PAQ</option><option>SERVICIO</option></select></div></div>
+  <div class="f"><label>Descripción</label><input value="Balón de gas 10 kg"></div>
+  <div class="frow"><div class="f"><label>Marca</label><input value="Solgas"></div><div class="f"><label>Proveedor</label><input value="Gasocentro Lima"></div></div>
+  <h2 class="mt8">Precios y crédito</h2>
+  <div class="frow"><div class="f"><label>Precio contado (S/)</label><input value="50.00"><span class="h">Es el precio que se aplica también en las compras al crédito</span></div><div class="f"><label>Precio de crédito referencial (S/)</label><input value="55.00"><span class="h">No interviene en los cálculos</span></div></div>
+  <div class="frow"><div class="f"><label>Permite venta al crédito</label><select><option>Sí</option><option>No</option></select></div><div class="f"><label>Máximo de cuotas</label><input value="2"></div><div class="f"><label>Estado</label><select><option>ACTIVO</option><option>INACTIVO</option></select></div></div>
+ </div><div class="card side340"><h2>Imagen</h2><div style="height:180px;border:1px dashed var(--pri);border-radius:10px;background:var(--pri-s);display:grid;place-items:center;color:var(--pri);font-weight:700;font-size:28px">P007</div><div class="note pri-b">Una compra que incluya este producto podrá pagarse en 1 o 2 cuotas como máximo.</div></div></div>`;
+
+V.compras=(sel)=>{const c=COMPRAS.find(x=>x.id===sel)||COMPRAS[0];
+ return hdr('Compras al crédito',COMPRAS.length+' compras vigentes',`<a class="btn pri" href="#nueva">+ Nueva compra</a>`)+
+ `<div class="card mb20"><div class="table-wrap"><table><thead><tr><th>Compra</th><th>Cliente</th><th>Fecha y hora</th><th class="r">C</th><th class="r">Cuotas</th><th class="r">Capital financiado</th><th class="r">Cuota regular</th><th class="r">TCEA</th></tr></thead><tbody>
+ ${COMPRAS.map(x=>`<tr class="click" onclick="location.hash='compras/${x.id}'" ${x.id===c.id?'style="background:var(--pri-s)"':''}><td class="b">${x.id}</td><td>${CLI[x.cli].n}</td><td>${x.fecha} ${String(x.hh).padStart(2,'0')}:${String(x.mm).padStart(2,'0')}</td><td class="r">${s2(x.C)}</td><td class="r">${x.n}</td><td class="r">${s2(x.Cg)}</td><td class="r b">${s2(x.R)}</td><td class="r">${x.tcea.toFixed(7)}%</td></tr>`).join('')}
+ </tbody></table></div></div>
+ <div class="card"><h2>Cronograma · ${c.id} (${CLI[c.cli].n})</h2><div class="m sm" style="margin:-8px 0 12px">Corte ${fmt(c.corte)} · fin de gracia ${fmt(c.fin)} · ${c.dg} días de gracia · interés de gracia ${soles(c.ig)} · TEM ${(c.tem*100).toFixed(7)}%</div>
+ <div class="table-wrap"><table><thead><tr><th>Cuota</th><th>Vencimiento</th><th class="r">Saldo inicial</th><th class="r">Interés</th><th class="r">Amortización</th><th class="r">Importe</th><th class="r">Saldo final</th></tr></thead><tbody>
+ ${c.cuotas.map(q=>`<tr><td>${q.k}</td><td>${fmt(q.venc)}</td><td class="r">${s2(q.si)}</td><td class="r">${s2(q.I)}</td><td class="r">${s2(q.A)}</td><td class="r b">${s2(q.R)}</td><td class="r">${s2(q.sf)}</td></tr>`).join('')}
+ </tbody><tfoot><tr><td colspan="3">Totales · totalInteresesCompra ${s2(c.tI)}</td><td class="r">${s2(c.cuotas.reduce((s,q)=>s+q.I,0))}</td><td class="r">${s2(c.Cg)}</td><td class="r" style="color:var(--pri)">${s2(c.tP)}</td><td></td></tr></tfoot></table></div></div>`;};
+
+// ---- Nueva compra (interactiva) ----
+const NC={cli:'carlos',fecha:'2026-09-27',hora:'14:00',items:[['P007',1],['P001',2],['P002',1],['P004',4]],n:2};
+V.nueva=()=>hdr('Nueva compra al crédito','La app calcula la gracia, la cuota fija (método francés) y la TCEA antes de confirmar',`<a class="btn" href="#compras">Cancelar</a><button class="btn pri" id="nc_ok" onclick="alert('Prototipo: la compra no se guarda.')">Confirmar compra</button>`,'<a href="#compras">Compras</a>  /  Nueva compra')+
+ `<div class="row"><div style="flex:2">
+  <div class="card mb20"><h2>1. Cliente y fecha</h2><div class="frow">
+   <div class="f"><label>Cliente</label><select onchange="NC.cli=this.value;ncRender()">${Object.values(CLI).map(c=>`<option value="${c.id}" ${c.id===NC.cli?'selected':''}>${c.n} · DNI ${c.dni}</option>`).join('')}</select></div>
+   <div class="f" style="flex:0 0 170px"><label>Fecha</label><input type="date" value="${NC.fecha}" onchange="NC.fecha=this.value;ncRender()"></div>
+   <div class="f" style="flex:0 0 120px"><label>Hora</label><input type="time" value="${NC.hora}" onchange="NC.hora=this.value;ncRender()"></div></div>
+   <div id="nc_cinfo" class="m sm"></div></div>
+  <div class="card"><h2>2. Productos</h2>
+   <div class="f"><label>Agregar producto</label><select onchange="if(this.value){ncAdd(this.value);this.value=''}"><option value="">Elegir producto…</option>${Object.keys(PROD).map(k=>`<option value="${k}">${k} · ${PROD[k].d} · ${soles(PROD[k].pc)}</option>`).join('')}</select></div>
+   <div id="nc_items"></div></div>
+ </div>
+ <div class="card side340" style="flex:0 0 400px!important" id="nc_res"></div></div>`;
+window.ncAdd=k=>{const it=NC.items.find(x=>x[0]===k);it?it[1]++:NC.items.push([k,1]);ncRender()};
+window.ncQty=(k,d)=>{const it=NC.items.find(x=>x[0]===k);it[1]+=d;if(it[1]<=0)NC.items=NC.items.filter(x=>x[0]!==k);ncRender()};
+window.ncN=n=>{NC.n=n;ncRender()};
+window.ncRender=()=>{
+  const c=CLI[NC.cli];const[y,m,d]=NC.fecha.split('-').map(Number);const[hh,mm]=NC.hora.split(':').map(Number);
+  const errs=[];NC.items.forEach(([k])=>{if(!PROD[k].act)errs.push(`${k} está inactivo.`);if(!PROD[k].fia)errs.push(`${k} no se puede vender al crédito.`)});
+  const nMax=Math.min(c.max,...NC.items.map(([k])=>PROD[k].max));if(NC.n>nMax)NC.n=Math.max(1,nMax);
+  const disp=red2(c.lim-deudaAntes(c.id,{y,m,d},hh,mm));
+  document.getElementById('nc_cinfo').innerHTML=`Tasa ${c.te.toFixed(7)}% ${c.per.toLowerCase()} · TEA ${c.tea.toFixed(4)}% · corte día ${c.corte} · pago día ${c.pago} · crédito disponible antes de la compra <b>${soles(disp)}</b>`;
+  document.getElementById('nc_items').innerHTML=NC.items.length?`<div class="table-wrap"><table><thead><tr><th>Producto</th><th class="r">Precio aplicado</th><th>Cantidad</th><th class="r">Subtotal</th></tr></thead><tbody>${NC.items.map(([k,q])=>`<tr><td>${prodCell(k)}</td><td class="r">${soles(PROD[k].pc)}</td><td><span class="qty"><button onclick="ncQty('${k}',-1)">−</button><span>${q}</span><button onclick="ncQty('${k}',1)">+</button></span></td><td class="r b">${soles(red2(q*PROD[k].pc))}</td></tr>`).join('')}</tbody></table></div>`:'<p class="m">Agrega al menos un producto.</p>';
+  const ok=NC.items.length&&!errs.length;let r=null;
+  if(ok)r=calcCompra(c,{y,m,d},hh,mm,NC.items,NC.n);
+  if(r&&r.Cg>disp)errs.push(`El capital financiado (${soles(r.Cg)}) supera el crédito disponible (${soles(disp)}).`);
+  document.getElementById('nc_ok').disabled=!!errs.length||!r;
+  document.getElementById('nc_res').innerHTML=`<h2>3. Cuotas y costo</h2><div class="f"><label>Número de cuotas (máx. ${nMax})</label><div class="seg">${[1,2,3,4,5,6].map(n=>`<button ${n===NC.n?'class="on"':''} ${n>nMax?'disabled':''} onclick="ncN(${n})">${n}</button>`).join('')}</div></div>`+
+   (r?`<div style="border-top:1px solid var(--line);padding-top:12px">
+    <div class="kv"><span>Importe de la compra (C)</span><span>${soles(r.C)}</span></div>
+    <div class="kv"><span>Corte del ciclo</span><span>${fmt(r.corte)} 23:59</span></div>
+    <div class="kv"><span>Días de gracia (hasta ${fmt(r.fin)})</span><span>${r.dg}</span></div>
+    <div class="kv"><span>Interés de gracia</span><span>${soles(r.ig)}</span></div>
+    <div class="kv"><span>Capital financiado</span><span>${soles(r.Cg)}</span></div>
+    <div class="kv"><span>TEM</span><span>${(r.tem*100).toFixed(7)}%</span></div>
+    <div class="kv"><span>TEA / TCEA</span><span>${c.tea.toFixed(4)}% / ${r.tcea.toFixed(4)}%</span></div>
+    <div class="kv big"><span>Cuota regular</span><span>${soles(r.R)}</span></div></div>
+    <div class="table-wrap mt8"><table><thead><tr><th>N°</th><th>Vence</th><th class="r">Interés</th><th class="r">Importe</th><th class="r">Saldo</th></tr></thead><tbody>${r.cuotas.map(q=>`<tr><td>${q.k}</td><td>${fmt(q.venc)}</td><td class="r">${s2(q.I)}</td><td class="r b">${s2(q.R)}</td><td class="r m">${s2(q.sf)}</td></tr>`).join('')}</tbody></table></div>`:'')+
+   (errs.length?`<div class="note red">${errs.join('<br>')}</div>`:(r?`<div class="note ok">Dentro del límite. Crédito disponible después de la compra: ${soles(disp-r.Cg)}</div>`:''));
+};
+
+// ---- Estados de cuenta ----
+V.estados=(sel)=>{const lst=[['mario','26/10/2026'],['rosa','26/10/2026']];const[cid,v]=sel?sel.split('_').map((x,i)=>i?x.replace(/-/g,'/'):x):lst[0];const c=CLI[cid];const e=estado(cid,v);const corte=mk(parseF(v).y,parseF(v).m,c.corte);
+ return hdr('Estados de cuenta','Se generan automáticamente en cada fecha de corte',`<button class="btn" onclick="window.print()">Imprimir</button>`)+
+ `<div class="row"><div class="card side340"><h2>Corte 20/10/2026</h2>
+  ${lst.map(([id,vv])=>{const ee=estado(id,vv);const on=id===cid;return`<a href="#estados/${id}_${vv.replace(/\//g,'-')}" style="display:flex;gap:10px;align-items:center;padding:12px;border-radius:8px;margin-bottom:6px;${on?'background:var(--pri-s);border:1px solid var(--pri)':''}"><div style="flex:1">${two(CLI[id].n,'Vence '+vv)}</div><div style="text-align:right"><div class="b">${soles(ee.total)}</div>${badge('Pendiente','amb')}</div></a>`}).join('')}
+  <div class="note pri-b">Carlos (corte 25/10) aún no tiene estado: su compra está en gracia hasta el 05/11 y su primera cuota vence el 05/12/2026. La cuota 1 de CM1 (Mario) ya se pagó el 26/09/2026.</div></div>
+  <div style="flex:2"><div class="doc">
+   <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><div style="font-size:18px;font-weight:700">Bodega Don Lucho</div><div class="m sm">Comercial Don Lucho E.I.R.L. · RUC 20512345671</div></div><div style="text-align:right"><div class="b" style="color:var(--pri)">ESTADO DE CUENTA</div><div class="m sm">Moneda: PEN</div></div></div>
+   <div style="display:flex;gap:24px;flex-wrap:wrap;background:var(--head);border-radius:8px;padding:14px 16px;margin:18px 0">${[['Cliente',c.n],['DNI',c.dni],['Fecha de corte',fmt(corte)],['Pagar hasta',v]].map(([a,b])=>`<div>${two(b,a)}</div>`).join('')}</div>
+   <div class="table-wrap"><table><thead><tr><th>Compra</th><th>Cuota</th><th class="r">Interés</th><th class="r">Amortización</th><th class="r">Importe</th></tr></thead><tbody>${e.it.map(x=>`<tr><td>${x.c.id} · ${x.c.fecha}</td><td>${x.q.k} de ${x.c.n}</td><td class="r">${s2(x.q.I)}</td><td class="r">${s2(x.q.A)}</td><td class="r b">${s2(x.q.R)}</td></tr>`).join('')}</tbody></table></div>
+   <div style="margin-top:14px"><div class="kv"><span>Total capital</span><span>${soles(e.cap)}</span></div><div class="kv"><span>Total intereses de cuotas</span><span>${soles(e.int)}</span></div><div class="kv"><span>Intereses moratorios</span><span>S/ 0.00</span></div>
+   <div class="kv" style="border-top:1px solid var(--text);margin-top:6px;padding-top:10px"><span class="b" style="color:var(--text);font-size:15px">TOTAL A PAGAR</span><span style="font-size:22px;font-weight:700;color:var(--pri)">${soles(e.total)}</span></div></div>
+   <p class="m sm" style="margin-top:14px">Tasa efectiva pactada ${c.te.toFixed(7)}% ${c.per.toLowerCase()} (TEA ${c.tea.toFixed(4)}%). Si paga después del ${v} se cobra interés moratorio (${c.tm.toFixed(7)}% ${c.perm.toLowerCase()}) sobre el saldo vencido. Pago único por el total.</p>
+  </div></div></div>`;};
+
+// ---- Registrar pago (interactivo) ----
+const PG={sel:'mario',fecha:'2026-11-06',medio:'EFECTIVO'};
+V.pago=()=>hdr('Registrar pago','Escribe la fecha real para calcular la mora',`<a class="btn" href="#estados">Cancelar</a><button class="btn pri" id="pg_ok" onclick="alert('Prototipo: el pago no se guarda.')">Registrar pago</button>`,'Pagos  /  Registrar pago')+
+ `<div class="row"><div class="card" style="flex:2"><h2>Datos del pago</h2>
+  <div class="f"><label>Estado de cuenta</label><select onchange="PG.sel=this.value;pgRender()">${['mario','rosa'].map(id=>`<option value="${id}" ${id===PG.sel?'selected':''}>${CLI[id].n} · corte 20/10/2026 · ${soles(estado(id,'26/10/2026').total)}</option>`).join('')}</select></div>
+  <div class="frow"><div class="f"><label>Fecha de pago pactada</label><input value="26/10/2026" disabled></div><div class="f"><label>Fecha real de pago</label><input type="date" value="${PG.fecha}" onchange="PG.fecha=this.value;pgRender()"><span class="h" id="pg_dh"></span></div></div>
+  <div class="f"><label>Medio de pago</label><div class="seg">${['EFECTIVO','YAPE','PLIN','TRANSFERENCIA'].map(x=>`<button ${x===PG.medio?'class="on"':''} onclick="PG.medio='${x}';document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.textContent==='${x}'))">${x}</button>`).join('')}</div></div>
+  <div class="f"><label>Monto pagado (S/)</label><input id="pg_monto" oninput="pgCheck()"><span class="h" id="pg_mh"></span></div>
+ </div><div class="card side340" style="flex:0 0 400px!important" id="pg_res"></div></div>`;
+let PGT=0;
+window.pgRender=()=>{const c=CLI[PG.sel];const e=estado(PG.sel,'26/10/2026');const[y,m,d]=PG.fecha.split('-').map(Number);
+ const dm=Math.max(0,d360(parseF('26/10/2026'),{y,m,d}));const tmp=teD(c.tm,c.pm,dm);const mora=red2(e.total*tmp);PGT=red2(e.total+mora);
+ document.getElementById('pg_dh').textContent=dm?dm+' días de atraso (30E/360)':'Pago puntual';
+ document.getElementById('pg_monto').value=PGT.toFixed(2);
+ document.getElementById('pg_res').innerHTML=`<h2>Cálculo del pago</h2>
+  <div class="kv"><span>Total capital</span><span>${soles(e.cap)}</span></div><div class="kv"><span>Total intereses de cuotas</span><span>${soles(e.int)}</span></div>
+  <div class="kv"><span>Días de mora</span><span style="color:${dm?'var(--red)':'inherit'}">${dm}</span></div>
+  <div class="kv"><span>tasaMoraAplicada (${dm} días)</span><span>${(tmp*100).toFixed(7)}%</span></div>
+  <div class="kv"><span>Interés moratorio</span><span style="color:${mora?'var(--red)':'inherit'}">${soles(mora)}</span></div>
+  <div class="kv big" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span class="b" style="color:var(--text)">Total a pagar</span><span>${soles(PGT)}</span></div>
+  <div class="m sm" style="margin:14px 0 8px;font-weight:500">Cómo se aplica el pago (prelación)</div>
+  <div class="kv"><span>1. Interés moratorio</span><span>${soles(mora)}</span></div><div class="kv"><span>2. Intereses de las cuotas</span><span>${soles(e.int)}</span></div><div class="kv"><span>3. Capital (amortización)</span><span>${soles(e.cap)}</span></div>
+  <div class="note pri-b">Después del pago, la deuda pendiente baja a ${soles(deuda(PG.sel)-e.cap)} y el crédito disponible sube a ${soles(c.lim-deuda(PG.sel)+e.cap)}.</div>`;
+ pgCheck();};
+window.pgCheck=()=>{const v=+document.getElementById('pg_monto').value;const okp=red2(v)===PGT;const h=document.getElementById('pg_mh');h.textContent=okp?'✓ Coincide con el total a pagar':'No se permiten pagos parciales. Total: '+soles(PGT);h.style.color=okp?'var(--ok)':'var(--red)';document.getElementById('pg_ok').disabled=!okp};
+
+V.parametros=()=>hdr('Parámetros','Datos de la tienda y valores que usan todos los cálculos',`<button class="btn pri" onclick="alert('Prototipo: no se guarda.')">Guardar cambios</button>`)+
+ `<div class="row"><div class="card"><h2>Datos de la tienda</h2><div class="f"><label>RUC</label><input value="20512345671"></div><div class="f"><label>Razón social</label><input value="Comercial Don Lucho E.I.R.L."></div><div class="f"><label>Nombre comercial</label><input value="Bodega Don Lucho"></div><div class="f"><label>Giro de negocio</label><input value="Bodega"></div></div>
+  <div class="card"><h2>Base de cálculo</h2>${[['baseDias','360'],['diasMes','30'],['decimalesMoneda','2'],['decimalesTasaMinimos','7 (precisión interna conservada)'],['baseMora','TOTAL_VENCIDO'],['Tasas','Solo efectivas'],['Método','Francés vencido, simple y ordinario'],['Gracia','Total (se capitaliza)']].map(([a,b])=>`<div class="kv"><span>${a}</span><span>${b}</span></div>`).join('')}
+  <div class="note pri-b">d = 360(A₂ − A₁) + 30(M₂ − M₁) + (D₂ − D₁), con D = mín(D, 30)</div></div></div>
+ <div class="card"><h2>Topes de tasa BCRP</h2><div class="m sm" style="margin:-8px 0 12px">Se registran por moneda y vigencia (Circular 0008-2021-BCRP · Ley 31143)</div>
+  <div class="table-wrap"><table><thead><tr><th>Parámetro</th><th>Moneda</th><th>Valor (TEA)</th><th>Vigencia desde</th><th>Vigencia hasta</th></tr></thead><tbody>
+  <tr><td class="b">topeInteresTEA</td><td>PEN</td><td class="m">[valor vigente BCRP]</td><td>—</td><td>—</td></tr><tr><td class="b">topeMoraTEA</td><td>PEN</td><td class="m">[valor vigente BCRP]</td><td>—</td><td>—</td></tr></tbody></table></div>
+  <div class="note amb">Al registrar un cliente, la app convierte sus tasas efectivas a TEA y las compara con estos topes.</div></div>`;
+
+V.flujo=()=>hdr('Cómo funciona Fiadito','Solo tasas efectivas y método francés vencido, simple y ordinario')+
+ `<div class="flow mb20">${[['1','Configura','Datos de la tienda, base 360/30 y topes BCRP.'],['2','Productos','Precio al contado (precio aplicado), si se fía y máx. de cuotas.'],['3','Clientes','Tasa efectiva y su periodo, mora, límite, corte y pago.'],['4','Compra','Valida, asigna ciclo, capitaliza la gracia y arma el cronograma.'],['5','Corte','Junta las cuotas que vencen y genera el estado de cuenta.'],['6','Pago','Total exacto + mora si hay atraso. Mora → interés → capital.']].map(s=>`<div class="card"><div class="n">${s[0]}</div><div class="b" style="font-size:16px;margin-bottom:6px">${s[1]}</div><div class="m sm">${s[2]}</div></div>`).join('')}</div>
+ <div class="card"><h2>Fórmulas (apartado 6.3)</h2>
+  ${[['Tasa efectiva para d días','TE_d = (1 + i)^(d/p) − 1'],['TEM','TEM = (1 + i)^(30/p) − 1'],['TEA','TEA = (1 + i)^(360/p) − 1'],['Gracia total','capitalFinanciado = red₂[C × (1 + tasaGracia)]'],['Cuota (método francés)','R = red₂[Cg × TEM / (1 − (1 + TEM)^−n)]'],['Cuadro','I_k = red₂(S_k−1 × TEM) · A_k = R − I_k · S_k = S_k−1 − A_k'],['Mora','moraObligacion = red₂(saldoVencido × [(1 + i_m)^(diasMora/pMora) − 1])'],['TCEA','C = Σ R_k / (1 + t)^((diasGracia + 30k)/360) · tcea = 100 × t']].map(([a,b])=>`<div class="kv"><span>${a}</span><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:500">${b}</span></div>`).join('')}</div>`;
+
+// ---- Login ----
+function login(){return`<div class="login"><div class="brand"><div class="logo"><div class="sq">F</div><div><b>Fiadito</b><small>Cuenta corriente de crédito</small></div></div>
+ <div><h2>El cuaderno de fiado, ahora con cuentas claras.</h2><p style="max-width:460px;font-size:16px">Registra compras al crédito, calcula cuotas con el método francés y genera el estado de cuenta de cada vecino en la fecha de corte.</p>
+ ${['Tasas efectivas validadas con el tope del BCRP','TEA y TCEA visibles en cada compra (Ley 29571)','Interés moratorio calculado automáticamente'].map(t=>`<div class="chk">${ico('check')}${t}</div>`).join('')}</div>
+ <small>© 2026 Fiadito · Bodega Don Lucho</small></div>
+ <div class="formz"><div class="card"><h1>Iniciar sesión</h1><div class="sub" style="margin-bottom:20px">Ingresa con tu usuario de bodeguero</div>
+ <div class="f"><label>Usuario</label><input value="ltorres"></div><div class="f"><label>Contraseña</label><input type="password" value="contrasena"></div>
+ <a class="btn pri" style="display:block;text-align:center;margin-top:6px" href="#inicio">Ingresar</a>
+ <p class="m sm" style="margin-top:16px">Acceso para el administrador del negocio (rol ADMIN_NEGOCIO). La contraseña se guarda cifrada con BCrypt.</p></div></div></div>`}
+
+// ---- Router ----
+const ROUTE_NAV={inicio:'inicio',clientes:'clientes',cliente:'clientes',nuevocliente:'clientes',productos:'productos',producto:'productos',compras:'compras',nueva:'compras',estados:'estados',pago:'pago',parametros:'parametros',flujo:'flujo'};
+function render(){
+  const[r,arg]=(location.hash.slice(1)||'login').split('/');
+  const root=document.getElementById('root');
+  if(r==='login'||!V[r]){root.innerHTML=login();window.scrollTo(0,0);return}
+  root.innerHTML=`<div class="app"><aside><div class="logo"><div class="sq">F</div><div><b>Fiadito</b><small>Bodega Don Lucho</small></div></div>
+   <nav>${NAV.map(([k,t,i])=>`<a href="#${k}" class="${ROUTE_NAV[r]===k?'on':''}">${ico(i)}${t}</a>`).join('')}</nav>
+   <div class="user"><div class="av">LT</div><div><b>Luis Torres Ramos</b><small>ADMIN_NEGOCIO · <a href="#login" style="text-decoration:underline">Salir</a></small></div></div></aside>
+   <main>${V[r](arg)}</main></div>`;
+  if(r==='nueva')ncRender();if(r==='pago')pgRender();if(r==='nuevocliente')ncCalc();
+  window.scrollTo(0,0);
+}
+
+const HELP={'Usuario':'Nombre de usuario sin espacios (máx. 40 caracteres).','Contraseña':'Se guarda cifrada con BCrypt; nunca como texto legible.',
+'DNI':'Documento de identidad de 8 dígitos. No puede repetirse.','Nombres':'Nombres del cliente (máx. 80 caracteres).','Apellidos':'Apellidos del cliente (máx. 80 caracteres).',
+'Moneda':'Moneda de la línea de crédito: PEN o USD.','Límite de crédito (S/)':'Deuda máxima permitida. Una compra que lo supere se rechaza.','Máx. cuotas':'Número máximo de cuotas mensuales que se le autoriza al cliente.',
+'Tasa efectiva (%)':'Tasa efectiva en porcentaje, con 7 decimales. Ejemplo: 6.1363551.','Periodo de la tasa':'Periodo al que está referida la tasa efectiva (p): diaria=1, quincenal=15, mensual=30 … anual=360 días.',
+'Día de corte':'Día del mes en que se cierra el ciclo y se genera el estado de cuenta (1 a 31).','Día de pago':'Día del mes en que vence el pago del ciclo. Debe ser posterior al corte.','Hora de corte':'Hora de cierre del ciclo. Las compras posteriores pasan al ciclo siguiente.',
+'Código':'Código interno único del producto (máx. 20 caracteres).','Unidad de medida':'UND, KG, LT, PAQ o SERVICIO.','Descripción':'Nombre del producto o servicio.','Marca':'Marca comercial (opcional).','Proveedor':'Proveedor del producto (opcional).',
+'Precio contado (S/)':'Precio unitario que se aplica en las compras, también al crédito. Dos decimales.','Precio de crédito referencial (S/)':'Solo referencia del catálogo; no interviene en los cálculos.','Permite venta al crédito':'Si es No, el producto no se puede agregar a una compra fiada.','Máximo de cuotas':'Máximo de cuotas permitido para este producto. Limita toda la compra.','Estado':'ACTIVO o INACTIVO. Un producto inactivo no se puede vender.',
+'Cliente':'Busca por DNI o nombre. Solo aparecen clientes activos.','Fecha':'Fecha de la compra. Define el ciclo de corte y los días de gracia.','Hora':'Hora de la compra. Si es posterior a la hora de corte, pasa al ciclo siguiente.','Agregar producto':'Elige un producto activo que se pueda vender al crédito.',
+'Estado de cuenta':'Estado de cuenta pendiente que se va a cancelar.','Fecha de pago pactada':'Fecha de vencimiento del estado de cuenta.','Fecha real de pago':'Fecha en que el cliente paga. Si es posterior a la pactada se calcula mora.','Medio de pago':'Efectivo, Yape, Plin o transferencia.','Monto pagado (S/)':'Debe ser exactamente el total a pagar. No se aceptan pagos parciales.',
+'RUC':'RUC de la tienda: 11 dígitos.','Razón social':'Nombre legal de la tienda.','Nombre comercial':'Nombre que aparece en el estado de cuenta.','Giro de negocio':'Actividad de la tienda: bodega, panadería, peluquería, etc.'};
+function addHelp(){document.querySelectorAll('.f > label').forEach(l=>{const k=l.textContent.trim();const h=HELP[k]||(k.startsWith('Número de cuotas')?'Entre 1 y el menor máximo entre el cliente y los productos elegidos.':null);if(h&&!l.querySelector('.tip')){const t=document.createElement('span');t.className='tip';t.textContent='?';t.setAttribute('data-h',h);t.setAttribute('title',h);l.appendChild(t)}})}
+new MutationObserver(addHelp).observe(document.getElementById('root'),{childList:true,subtree:true});
+window.addEventListener('hashchange',render);render();
+</script>
+</body>
+</html>
