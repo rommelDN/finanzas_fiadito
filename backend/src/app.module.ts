@@ -10,6 +10,7 @@ import { EstadosCuentaModule } from './estados-cuenta/estados-cuenta.module';
 import { PrismaModule } from './common/prisma.service';
 import { ParametrosModule } from './parametros/parametros.module';
 import { ProductosModule } from './productos/productos.module';
+import { ResumenModule } from './resumen/resumen.module';
 import { TiendasModule } from './tiendas/tiendas.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { TiendasModule } from './tiendas/tiendas.module';
     ClientesModule,
     ComprasModule,
     EstadosCuentaModule,
+    ResumenModule,
   ],
 })
 export class AppModule {}

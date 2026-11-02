@@ -21,5 +21,40 @@ services:
       timeout: 5s
       retries: 20
 
+  # Desarrollo: API NestJS con recarga. Aplica migraciones y seed al arrancar.
+  backend:
+    image: node:22-alpine
+    container_name: fiadito-backend
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://root:${DB_ROOT_PASSWORD:-fiadito}@db:3306/${DB_NAME:-fiadito}
+      PORT: "3000"
+      TZ: America/Lima
+    volumes:
+      - ./backend:/app
+    command: sh -c "npm install --no-audit --no-fund && npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run start:dev"
+    ports:
+      - "3000:3000"
+
+  # Desarrollo: React + Vite. /api y /uploads se reenvían al backend.
+  frontend:
+    image: node:22-alpine
+    container_name: fiadito-frontend
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_TARGET: http://backend:3000
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+
 volumes:
   db_data:
