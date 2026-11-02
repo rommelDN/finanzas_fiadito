@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { ComprasModule } from './compras/compras.module';
 import { PrismaModule } from './common/prisma.service';
 import { ParametrosModule } from './parametros/parametros.module';
 import { ProductosModule } from './productos/productos.module';
@@ -19,6 +20,7 @@ import { TiendasModule } from './tiendas/tiendas.module';
     TiendasModule,
     ProductosModule,
     ClientesModule,
+    ComprasModule,
   ],
 })
 export class AppModule {}
