@@ -4,7 +4,7 @@ import { hoyLimaISO } from '../common/lima';
 import { PrismaService } from '../common/prisma.service';
 import { dec } from '../finanzas';
 
-type Alcance = { tiendaId: bigint; clienteId?: bigint | null };
+type Alcance = { tiendaId: bigint };
 const m2 = (x: { toFixed(n: number): string }) => x.toFixed(2);
 const dia = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -15,13 +15,12 @@ export class ResumenService {
 
   async obtener(a: Alcance) {
     const hoy = new Date(`${hoyLimaISO()}T00:00:00Z`);
-    const filtroCli = a.clienteId ? { id: a.clienteId } : {};
-    const filtroCompra = { tiendaId: a.tiendaId, ...(a.clienteId ? { clienteId: a.clienteId } : {}) };
+    const filtroCompra = { tiendaId: a.tiendaId };
     const filtroCuota = { compra: filtroCompra, estado: 'PENDIENTE' as const };
 
     const [clientes, financiado, pagado, proximas, vencidas, recientes] = await Promise.all([
       this.prisma.cliente.findMany({
-        where: { tiendaId: a.tiendaId, estado: 'ACTIVO', ...filtroCli },
+        where: { tiendaId: a.tiendaId, estado: 'ACTIVO' },
         orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }],
       }),
       this.prisma.compra.groupBy({ by: ['clienteId'], where: filtroCompra, _sum: { capitalFinanciado: true } }),
@@ -63,7 +62,6 @@ export class ResumenService {
       return {
         id: c.id,
         nombre: `${c.nombres} ${c.apellidos}`,
-        moneda: c.moneda,
         limiteCredito: m2(limite),
         deudaPendiente: m2(deuda),
         creditoDisponible: m2(limite.minus(deuda)),

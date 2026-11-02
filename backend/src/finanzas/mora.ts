@@ -39,10 +39,12 @@ export const calcularPago = (
   fechaPagoReal: Fecha,
   tasaMora: Decimal.Value,
   periodoMora: Periodo,
+  /** Si se indica, se usan estos días de mora en vez de calcularlos con las fechas. */
+  diasMoraManual?: number,
 ): ResultadoPago => {
   const pMora = PERIODOS[periodoMora];
   const detalleMora = obligaciones.map((o) => {
-    const diasMora = Math.max(0, dias360(o.vencimiento, fechaPagoReal));
+    const diasMora = diasMoraManual ?? Math.max(0, dias360(o.vencimiento, fechaPagoReal));
     const tasaMoraPeriodo = diasMora > 0 ? tasaPeriodo(tasaMora, pMora, diasMora) : dec(0);
     const mora = red2(o.interes.plus(o.amortizacion).times(tasaMoraPeriodo));
     return { diasMora, tasaMoraPeriodo, mora };
@@ -50,7 +52,7 @@ export const calcularPago = (
   const totalCapital = obligaciones.reduce((s, o) => s.plus(o.amortizacion), dec(0));
   const totalInteresesCuotas = obligaciones.reduce((s, o) => s.plus(o.interes), dec(0));
   const interesesMora = detalleMora.reduce((s, m) => s.plus(m.mora), dec(0));
-  const diasMora = Math.max(0, dias360(fechaPagoEstado, fechaPagoReal));
+  const diasMora = diasMoraManual ?? Math.max(0, dias360(fechaPagoEstado, fechaPagoReal));
   return {
     totalCapital,
     totalInteresesCuotas,

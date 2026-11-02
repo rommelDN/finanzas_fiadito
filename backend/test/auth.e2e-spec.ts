@@ -1,28 +1,19 @@
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { configurarApp } from '../src/setup';
+import { PASS, db, iniciarApp } from './helpers';
 
-// Requiere MySQL levantado y con el seed aplicado (usuarios admin, ltorres, rosa...).
-const PASS = process.env.SEED_PASSWORD ?? 'Fiadito2026!';
-
+// Requiere MySQL levantado y con el seed aplicado (usuarios admin y ltorres).
 describe('Auth, roles y bitácora (e2e)', () => {
   let app: INestApplication;
-  const db = new PrismaClient();
-  const api = () => request(app.getHttpServer());
+  let api: Awaited<ReturnType<typeof iniciarApp>>['api'];
 
-  const login = (username: string, password = PASS) =>
-    api().post('/api/auth/login').send({ username, password });
+  const login = (username: string, password = PASS) => api().post('/api/auth/login').send({ username, password });
   const tokenDe = async (username: string) => (await login(username)).body.token as string;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = mod.createNestApplication();
-    configurarApp(app);
-    await app.init();
+    const t = await iniciarApp();
+    app = t.app;
+    api = t.api;
   });
 
   afterAll(async () => {
@@ -44,6 +35,13 @@ describe('Auth, roles y bitácora (e2e)', () => {
     expect(me.body.username).toBe('ltorres');
   });
 
+  it('solo existen dos tipos de usuario: administrador del sistema y administrador del negocio', async () => {
+    const roles = await db.usuario.findMany({ distinct: ['rol'], select: { rol: true } });
+    expect(roles.map((r) => r.rol).sort()).toEqual(['ADMIN_NEGOCIO', 'ADMIN_SISTEMA']);
+    // Los clientes no tienen cuenta: ni usuarios de cliente del seed ni forma de iniciar sesión.
+    for (const u of ['rosa', 'carlos', 'mario']) await login(u).expect(401);
+  });
+
   it('clave incorrecta y usuario inexistente dan el mismo error', async () => {
     const a = await login('ltorres', 'mala').expect(401);
     const b = await login('nadie', 'mala').expect(401);
@@ -51,44 +49,40 @@ describe('Auth, roles y bitácora (e2e)', () => {
   });
 
   it('el token solo se guarda como hash en la BD', async () => {
-    const token = await tokenDe('rosa');
-    const filas = await db.sesion.findMany({ where: { tokenHash: token } });
-    expect(filas).toHaveLength(0);
+    const token = await tokenDe('ltorres');
+    expect(await db.sesion.findMany({ where: { tokenHash: token } })).toHaveLength(0);
   });
 
   it('logout invalida el token', async () => {
-    const token = await tokenDe('mario');
+    const token = await tokenDe('ltorres');
     await api().post('/api/auth/logout').set('Authorization', `Bearer ${token}`).expect(204);
     await api().get('/api/auth/me').set('Authorization', `Bearer ${token}`).expect(401);
   });
 
   it('una sesión vencida se rechaza', async () => {
-    const token = await tokenDe('carlos');
-    await db.sesion.updateMany({
-      where: { usuario: { username: 'carlos' } },
-      data: { expiraEn: new Date(Date.now() - 1000) },
-    });
+    const token = await tokenDe('ltorres');
+    await db.sesion.updateMany({ where: { usuario: { username: 'ltorres' } }, data: { expiraEn: new Date(Date.now() - 1000) } });
     await api().get('/api/auth/me').set('Authorization', `Bearer ${token}`).expect(401);
   });
 
   it('un usuario inactivo no puede entrar ni usar su sesión', async () => {
-    const token = await tokenDe('rosa');
-    await db.usuario.update({ where: { username: 'rosa' }, data: { estado: 'INACTIVO' } });
+    const token = await tokenDe('ltorres');
+    await db.usuario.update({ where: { username: 'ltorres' }, data: { estado: 'INACTIVO' } });
     try {
-      await login('rosa').expect(401);
+      await login('ltorres').expect(401);
       await api().get('/api/auth/me').set('Authorization', `Bearer ${token}`).expect(401);
     } finally {
-      await db.usuario.update({ where: { username: 'rosa' }, data: { estado: 'ACTIVO' } });
+      await db.usuario.update({ where: { username: 'ltorres' }, data: { estado: 'ACTIVO' } });
     }
   });
 
-  it('los roles restringen la bitácora', async () => {
-    const cliente = await tokenDe('rosa');
-    await api().get('/api/bitacora').set('Authorization', `Bearer ${cliente}`).expect(403);
+  it('los roles restringen las rutas', async () => {
     const negocio = await tokenDe('ltorres');
-    await api().get('/api/bitacora').set('Authorization', `Bearer ${negocio}`).expect(200);
     const admin = await tokenDe('admin');
-    await api().get('/api/bitacora').set('Authorization', `Bearer ${admin}`).expect(200);
+    await api().get('/api/tiendas').set('Authorization', `Bearer ${negocio}`).expect(403);
+    await api().get('/api/tiendas').set('Authorization', `Bearer ${admin}`).expect(200);
+    await api().get('/api/clientes').set('Authorization', `Bearer ${admin}`).expect(403);
+    await api().get('/api/resumen').set('Authorization', `Bearer ${admin}`).expect(403);
   });
 
   it('login, login fallido y logout quedan en la bitácora', async () => {

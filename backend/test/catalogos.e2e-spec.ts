@@ -1,43 +1,33 @@
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { PrismaClient } from '@prisma/client';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { configurarApp } from '../src/setup';
+import { db, iniciarApp } from './helpers';
 
-// Requiere MySQL levantado y con el seed aplicado.
-const PASS = process.env.SEED_PASSWORD ?? 'Fiadito2026!';
+// Requiere MySQL con el seed aplicado.
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64',
 );
 
-describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
+describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
   let app: INestApplication;
-  const db = new PrismaClient();
-  const api = () => request(app.getHttpServer());
-  const tokens: Record<string, string> = {};
-  const auth = (u: string) => ({ Authorization: `Bearer ${tokens[u]}` });
+  let t: Awaited<ReturnType<typeof iniciarApp>>;
+  const api = () => t.api();
+  const auth = (u: string) => t.auth(u);
 
-  const creados = { rucs: ['20555555551'], dnis: ['70000001', '70000002'], usernames: ['tienda_e2e', 'cliente_e2e'] };
+  const creados = { rucs: ['20555555551'], dnis: ['70000001', '70000002'], usernames: ['tienda_e2e'] };
   const sufijo = Date.now().toString().slice(-6);
   const codigoProd = `T${sufijo}`;
 
   const clienteValido = (dni: string, extra: object = {}) => ({
-    dni, nombres: 'Prueba', apellidos: 'E2E', moneda: 'PEN',
+    dni, nombres: 'Prueba', apellidos: 'E2E',
     tasaInteres: 6.1363551, periodoTasa: 'BIMESTRAL', tasaMora: 6.1208, periodoTasaMora: 'SEMESTRAL',
-    limiteCredito: 500, maxCuotas: 4, diaCorte: 20, horaCorte: '23:59', diaPago: 26, aceptaPrivacidad: true,
+    limiteCredito: 200, maxCuotas: 4, diaCorte: 20, horaCorte: '23:59', diaPago: 26, aceptaPrivacidad: true,
     ...extra,
   });
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = mod.createNestApplication();
-    configurarApp(app);
-    await app.init();
-    for (const u of ['admin', 'ltorres', 'rosa']) {
-      tokens[u] = (await api().post('/api/auth/login').send({ username: u, password: PASS })).body.token;
-    }
+    t = await iniciarApp();
+    app = t.app;
+    await t.login('admin', 'ltorres');
     await limpiar();
   });
 
@@ -69,7 +59,7 @@ describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
 
     it('solo ADMIN_SISTEMA puede dar de alta tiendas', async () => {
       await api().post('/api/tiendas').set(auth('ltorres')).send(nueva).expect(403);
-      await api().get('/api/tiendas').set(auth('rosa')).expect(403);
+      await api().get('/api/tiendas').set(auth('ltorres')).expect(403);
     });
 
     it('alta de tienda crea su administrador, que puede iniciar sesión', async () => {
@@ -79,7 +69,7 @@ describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
       expect(r.body.usuarios[0]).toMatchObject({ username: 'tienda_e2e' });
       expect(JSON.stringify(r.body)).not.toMatch(/passwordHash|ClaveSegura1/);
       const login = await api().post('/api/auth/login').send({ username: 'tienda_e2e', password: 'ClaveSegura1' }).expect(200);
-      tokens.tienda_e2e = login.body.token;
+      t.tokens.tienda_e2e = login.body.token;
       expect(login.body.usuario).toMatchObject({ rol: 'ADMIN_NEGOCIO' });
     });
 
@@ -115,14 +105,16 @@ describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
     it('el administrador de negocio crea un producto con valores por defecto', async () => {
       const r = await api().post('/api/productos').set(auth('ltorres')).send(prod).expect(201);
       id = r.body.id;
-      expect(r.body).toMatchObject({ codigo: codigoProd, permiteCredito: true, estado: 'ACTIVO', monedaPrecio: 'PEN', precioContado: '3.5' });
+      expect(r.body).toMatchObject({ codigo: codigoProd, permiteCredito: true, estado: 'ACTIVO', precioContado: '3.5' });
+      expect(r.body).not.toHaveProperty('monedaPrecio');
     });
 
-    it('rechaza código repetido, precio inválido y creación por cliente', async () => {
+    it('rechaza código repetido, precios inválidos o fuera de rango, y al administrador del sistema', async () => {
       await api().post('/api/productos').set(auth('ltorres')).send(prod).expect(409);
       await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', precioContado: 0 }).expect(400);
       await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', precioContado: 1.234 }).expect(400);
-      await api().post('/api/productos').set(auth('rosa')).send({ ...prod, codigo: 'X' }).expect(403);
+      await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', precioContado: 251 }).expect(400);
+      await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', maxCuotasProducto: 13 }).expect(400);
       await api().post('/api/productos').set(auth('admin')).send({ ...prod, codigo: 'X' }).expect(403);
     });
 
@@ -143,86 +135,93 @@ describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
     });
 
     it('aislamiento: otra tienda no ve ni edita este producto', async () => {
-      // Administrador de la tienda creada en el bloque anterior (distinta de Don Lucho).
-      const ajeno = tokens.tienda_e2e;
-      const lista = await api().get('/api/productos').set('Authorization', `Bearer ${ajeno}`).expect(200);
+      const ajeno = 'tienda_e2e';
+      const lista = await api().get('/api/productos').set(auth(ajeno)).expect(200);
       expect(lista.body).toHaveLength(0);
-      await api().get(`/api/productos/${id}`).set('Authorization', `Bearer ${ajeno}`).expect(404);
-      await api().patch(`/api/productos/${id}`).set('Authorization', `Bearer ${ajeno}`).send({ marca: 'Hack' }).expect(404);
-      await api().delete(`/api/productos/${id}`).set('Authorization', `Bearer ${ajeno}`).expect(404);
+      await api().get(`/api/productos/${id}`).set(auth(ajeno)).expect(404);
+      await api().patch(`/api/productos/${id}`).set(auth(ajeno)).send({ marca: 'Hack' }).expect(404);
+      await api().delete(`/api/productos/${id}`).set(auth(ajeno)).expect(404);
     });
 
-    it('el cliente solo ve productos activos; la baja es lógica', async () => {
-      const antes = await api().get('/api/productos').set(auth('rosa')).expect(200);
-      expect(antes.body.some((p: any) => p.codigo === codigoProd)).toBe(true);
-      expect(antes.body.every((p: any) => p.estado === 'ACTIVO')).toBe(true);
-      expect(antes.body.some((p: any) => p.codigo === 'P009')).toBe(false); // inactivo en el seed
-
+    it('la baja es lógica y se puede filtrar por estado', async () => {
       const baja = await api().delete(`/api/productos/${id}`).set(auth('ltorres')).expect(200);
       expect(baja.body.estado).toBe('INACTIVO');
-      const despues = await api().get('/api/productos').set(auth('rosa')).expect(200);
-      expect(despues.body.some((p: any) => p.codigo === codigoProd)).toBe(false);
-      const admin = await api().get('/api/productos?estado=INACTIVO').set(auth('ltorres')).expect(200);
-      expect(admin.body.some((p: any) => p.codigo === codigoProd)).toBe(true);
+      const inactivos = await api().get('/api/productos?estado=INACTIVO').set(auth('ltorres')).expect(200);
+      expect(inactivos.body.some((p: any) => p.codigo === codigoProd)).toBe(true);
+      const activos = await api().get('/api/productos?estado=ACTIVO').set(auth('ltorres')).expect(200);
+      expect(activos.body.some((p: any) => p.codigo === codigoProd)).toBe(false);
     });
   });
 
-  describe('clientes y topes BCRP', () => {
-    it('crea un cliente con cuenta de acceso y devuelve los cálculos de tasas', async () => {
-      const r = await api().post('/api/clientes').set(auth('ltorres'))
-        .send(clienteValido('70000001', { cuenta: { username: 'cliente_e2e', password: 'ClaveSegura1' } })).expect(201);
-      expect(r.body).toMatchObject({ dni: '70000001', horaCorte: '23:59', cuenta: 'cliente_e2e', estado: 'ACTIVO' });
+  describe('clientes y topes de TEA', () => {
+    it('crea un cliente (sin cuenta de acceso) y devuelve los cálculos de tasas', async () => {
+      const r = await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000001')).expect(201);
+      expect(r.body).toMatchObject({ dni: '70000001', horaCorte: '23:59', estado: 'ACTIVO', limiteCredito: '200' });
       expect(r.body.calculos).toMatchObject({ p: 60, pMora: 180 });
       expect(Number(r.body.calculos.teaInteresPct)).toBeGreaterThan(40);
       expect(Number(r.body.calculos.teaInteresPct)).toBeLessThan(45);
-      expect(JSON.stringify(r.body)).not.toMatch(/passwordHash/);
-      await api().post('/api/auth/login').send({ username: 'cliente_e2e', password: 'ClaveSegura1' }).expect(200);
+      expect(r.body).not.toHaveProperty('moneda');
+      expect(r.body).not.toHaveProperty('usuarioId');
     });
 
-    it('rechaza tasas que superan los topes BCRP', async () => {
+    it('rechaza tasas que superan los topes (60 % de interés y 15 % de mora, TEA)', async () => {
       const r = await api().post('/api/clientes').set(auth('ltorres'))
         .send(clienteValido('70000002', { tasaInteres: 10, periodoTasa: 'MENSUAL' })).expect(400);
-      expect(JSON.stringify(r.body.message)).toMatch(/TEA de interés.*tope BCRP/);
+      expect(JSON.stringify(r.body.message)).toMatch(/TEA de interés.*supera el tope/);
       const m = await api().post('/api/clientes').set(auth('ltorres'))
         .send(clienteValido('70000002', { tasaMora: 5, periodoTasaMora: 'MENSUAL' })).expect(400);
-      expect(JSON.stringify(m.body.message)).toMatch(/TEA de mora.*tope BCRP/);
+      expect(JSON.stringify(m.body.message)).toMatch(/TEA de mora.*supera el tope/);
+    });
+
+    it('el límite de crédito no puede pasar de S/ 250 ni las cuotas de 12', async () => {
+      const r = await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000002', { limiteCredito: 251 })).expect(400);
+      expect(JSON.stringify(r.body.message)).toMatch(/no puede superar S\/ 250/);
+      await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000002', { limiteCredito: 250 })).expect(201);
+      await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000003', { maxCuotas: 13 })).expect(400);
     });
 
     it('exige aceptar la privacidad, DNI válido y ser administrador de negocio', async () => {
-      await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000002', { aceptaPrivacidad: false })).expect(400);
+      await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000009', { aceptaPrivacidad: false })).expect(400);
       await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('123')).expect(400);
       await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000001')).expect(409);
-      await api().post('/api/clientes').set(auth('rosa')).send(clienteValido('70000002')).expect(403);
+      await api().post('/api/clientes').set(auth('admin')).send(clienteValido('70000009')).expect(403);
     });
 
     it('/calcular previsualiza sin guardar y marca si excede los topes', async () => {
       const ok = await api().post('/api/clientes/calcular').set(auth('ltorres'))
-        .send({ moneda: 'PEN', tasaInteres: 6.1363551, periodoTasa: 'BIMESTRAL', tasaMora: 6.1208, periodoTasaMora: 'SEMESTRAL' }).expect(200);
-      expect(ok.body).toMatchObject({ ok: true, errores: [] });
+        .send({ tasaInteres: 6.1363551, periodoTasa: 'BIMESTRAL', tasaMora: 6.1208, periodoTasaMora: 'SEMESTRAL' }).expect(200);
+      expect(ok.body).toMatchObject({ ok: true, errores: [], topes: { topeInteresTEA: '60', topeMoraTEA: '15' } });
       const mal = await api().post('/api/clientes/calcular').set(auth('ltorres'))
-        .send({ moneda: 'PEN', tasaInteres: 10, periodoTasa: 'MENSUAL', tasaMora: 1, periodoTasaMora: 'ANUAL' }).expect(200);
+        .send({ tasaInteres: 10, periodoTasa: 'MENSUAL', tasaMora: 1, periodoTasaMora: 'ANUAL' }).expect(200);
       expect(mal.body.ok).toBe(false);
       expect(mal.body.errores).toHaveLength(1);
     });
 
-    it('actualiza datos, revalida tasas y dar de baja inactiva también su cuenta', async () => {
-      const lista = await api().get('/api/clientes?q=70000001').set(auth('ltorres')).expect(200);
-      const id = lista.body[0].id;
-      const u = await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ limiteCredito: 750, horaCorte: '18:30' }).expect(200);
-      expect(u.body).toMatchObject({ limiteCredito: '750', horaCorte: '18:30' });
-      await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ tasaInteres: 10, periodoTasa: 'MENSUAL' }).expect(400);
-      await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ dni: '99999999' }).expect(200); // dni ignorado
-      const sin = await api().get(`/api/clientes/${id}`).set(auth('ltorres')).expect(200);
-      expect(sin.body.dni).toBe('70000001');
-
-      const baja = await api().delete(`/api/clientes/${id}`).set(auth('ltorres')).expect(200);
-      expect(baja.body.estado).toBe('INACTIVO');
-      await api().post('/api/auth/login').send({ username: 'cliente_e2e', password: 'ClaveSegura1' }).expect(401);
-      await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ estado: 'ACTIVO' }).expect(200);
-      await api().post('/api/auth/login').send({ username: 'cliente_e2e', password: 'ClaveSegura1' }).expect(200);
+    it('no existe tasa nominal: el cuerpo solo acepta tasas efectivas con su periodo', async () => {
+      const r = await api().post('/api/clientes').set(auth('ltorres'))
+        .send(clienteValido('70000004', { tipoTasa: 'NOMINAL', capitalizacion: 'MENSUAL' }));
+      // Los campos extra se ignoran (whitelist) y se crea con la tasa efectiva.
+      expect([201, 409]).toContain(r.status);
+      expect(JSON.stringify(r.body)).not.toMatch(/nominal|capitalizacion/i);
+      await db.cliente.deleteMany({ where: { dni: '70000004' } });
     });
 
-    it('un cliente con cuotas pendientes no se puede dar de baja', async () => {
+    it('actualiza datos, revalida tasas y no cambia el DNI', async () => {
+      const lista = await api().get('/api/clientes?q=70000001').set(auth('ltorres')).expect(200);
+      const id = lista.body[0].id;
+      const u = await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ limiteCredito: 150, horaCorte: '18:30' }).expect(200);
+      expect(u.body).toMatchObject({ limiteCredito: '150', horaCorte: '18:30' });
+      await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ limiteCredito: 300 }).expect(400);
+      await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ tasaInteres: 10, periodoTasa: 'MENSUAL' }).expect(400);
+      await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ dni: '99999999' }).expect(200);
+      expect((await api().get(`/api/clientes/${id}`).set(auth('ltorres')).expect(200)).body.dni).toBe('70000001');
+    });
+
+    it('la baja es lógica; no se permite con cuotas pendientes', async () => {
+      const lista = await api().get('/api/clientes?q=70000001').set(auth('ltorres')).expect(200);
+      const baja = await api().delete(`/api/clientes/${lista.body[0].id}`).set(auth('ltorres')).expect(200);
+      expect(baja.body.estado).toBe('INACTIVO');
+
       const rosa = await db.cliente.findFirstOrThrow({ where: { dni: '40000001' } });
       const compra = await db.compra.create({
         data: {
@@ -243,13 +242,6 @@ describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
       }
     });
 
-    it('el cliente consulta solo sus propios datos y no el listado', async () => {
-      const r = await api().get('/api/clientes/mi').set(auth('rosa')).expect(200);
-      expect(r.body).toMatchObject({ dni: '40000001', horaCorte: '23:59' });
-      await api().get('/api/clientes').set(auth('rosa')).expect(403);
-      await api().get('/api/clientes/mi').set(auth('ltorres')).expect(403);
-    });
-
     it('aislamiento: otra tienda no ve los clientes de Don Lucho', async () => {
       const lista = await api().get('/api/clientes').set(auth('tienda_e2e')).expect(200);
       expect(lista.body).toHaveLength(0);
@@ -259,30 +251,28 @@ describe('Etapa 4: tiendas, productos, clientes y parámetros (e2e)', () => {
   });
 
   describe('parámetros', () => {
-    it('admin del sistema y del negocio consultan topes vigentes; el cliente no', async () => {
+    it('ambos administradores consultan los topes vigentes; los límites del proyecto son fijos', async () => {
       const r = await api().get('/api/parametros/topes').set(auth('ltorres')).expect(200);
-      expect(r.body.PEN).toHaveProperty('topeInteresTEA');
-      expect(r.body.USD).toHaveProperty('topeMoraTEA');
-      await api().get('/api/parametros').set(auth('admin')).expect(200);
-      await api().get('/api/parametros').set(auth('rosa')).expect(403);
+      expect(r.body).toEqual({ topeInteresTEA: '60', topeMoraTEA: '15' });
+      const p = await api().get('/api/parametros').set(auth('admin')).expect(200);
+      expect(p.body.limites).toEqual({ limiteMaximoCredito: 250, maxCuotas: 12 });
+      expect(JSON.stringify(p.body)).not.toMatch(/USD|moneda/);
     });
 
-    it('solo ADMIN_SISTEMA fija topes; se cierra la vigencia anterior y la mora por defecto es 0.15 × interés', async () => {
-      await api().put('/api/parametros/topes').set(auth('ltorres'))
-        .send({ moneda: 'USD', topeInteresTEA: 50, vigenteDesde: '2031-01-01' }).expect(403);
-      await api().put('/api/parametros/topes').set(auth('admin'))
-        .send({ moneda: 'USD', topeInteresTEA: 50, vigenteDesde: 'mañana' }).expect(400);
+    it('solo ADMIN_SISTEMA fija topes; se cierra la vigencia anterior', async () => {
+      const dto = { topeInteresTEA: 50, topeMoraTEA: 12, vigenteDesde: '2031-01-01' };
+      await api().put('/api/parametros/topes').set(auth('ltorres')).send(dto).expect(403);
+      await api().put('/api/parametros/topes').set(auth('admin')).send({ ...dto, vigenteDesde: 'mañana' }).expect(400);
+      await api().put('/api/parametros/topes').set(auth('admin')).send({ topeInteresTEA: 50, vigenteDesde: '2031-01-01' }).expect(400);
 
-      const r = await api().put('/api/parametros/topes').set(auth('admin'))
-        .send({ moneda: 'USD', topeInteresTEA: 50, vigenteDesde: '2031-01-01' }).expect(200);
+      const r = await api().put('/api/parametros/topes').set(auth('admin')).send(dto).expect(200);
       const nuevos = r.body.filter((p: any) => p.vigenteDesde.startsWith('2031-01-01'));
       expect(nuevos.find((p: any) => p.clave === 'topeInteresTEA').valor).toBe('50');
-      expect(nuevos.find((p: any) => p.clave === 'topeMoraTEA').valor).toBe('7.5');
-      const anterior = r.body.find((p: any) => p.clave === 'topeInteresTEA' && p.vigenteHasta?.startsWith('2030-12-31'));
-      expect(anterior).toBeDefined();
+      expect(nuevos.find((p: any) => p.clave === 'topeMoraTEA').valor).toBe('12');
+      expect(r.body.some((p: any) => p.clave === 'topeInteresTEA' && p.vigenteHasta?.startsWith('2030-12-31'))).toBe(true);
       // Hoy sigue rigiendo la vigencia anterior (la nueva empieza en 2031).
       const hoy = await api().get('/api/parametros/topes').set(auth('admin')).expect(200);
-      expect(hoy.body.USD.topeInteresTEA).not.toBe('50');
+      expect(hoy.body.topeInteresTEA).toBe('60');
     });
   });
 

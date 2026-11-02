@@ -6,10 +6,10 @@ import { ResumenService } from './resumen.service';
 export class ResumenController {
   constructor(private readonly svc: ResumenService) {}
 
-  /** Dashboard: el administrador ve su tienda; el cliente, solo lo suyo. */
+  /** Dashboard de la tienda. */
   @Get()
-  @Roles('ADMIN_NEGOCIO', 'CLIENTE')
+  @Roles('ADMIN_NEGOCIO')
   obtener(@CurrentUser() u: UsuarioActual) {
-    return this.svc.obtener({ tiendaId: u.tiendaId!, clienteId: u.clienteId });
+    return this.svc.obtener({ tiendaId: u.tiendaId! });
   }
 }

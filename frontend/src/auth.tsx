@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { api, guardarToken, SESION_EXPIRADA, tokenGuardado } from './api';
 
-export type Rol = 'ADMIN_SISTEMA' | 'ADMIN_NEGOCIO' | 'CLIENTE';
+export type Rol = 'ADMIN_SISTEMA' | 'ADMIN_NEGOCIO';
 
 export interface Usuario {
   id: string;
@@ -9,7 +9,6 @@ export interface Usuario {
   nombre: string;
   rol: Rol;
   tiendaId: string | null;
-  clienteId: string | null;
 }
 
 interface Ctx {

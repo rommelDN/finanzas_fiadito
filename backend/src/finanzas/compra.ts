@@ -134,3 +134,52 @@ export const calcularCompra = (e: EntradaCompra): ResultadoCompra => {
 /** Cuotas máximas permitidas = min(cliente, cada producto). */
 export const maxCuotasPermitidas = (maxCliente: number, maxProductos: number[]): number =>
   Math.min(maxCliente, ...maxProductos);
+
+/** Suma `dias` días de calendario a una fecha. */
+export const sumarDias = (f: Fecha, dias: number): Fecha => {
+  const t = new Date(Date.UTC(f.y, f.m - 1, f.d + dias));
+  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
+};
+
+export interface EntradaGracia {
+  /** Capital de la compra (suma de subtotales al contado). */
+  capital: Decimal.Value;
+  tasaInteres: Decimal.Value;
+  periodoTasa: Periodo;
+  fecha: Fecha;
+  /** Días de gracia pactados: el fin de gracia es la fecha de compra + esos días. */
+  diasGracia: number;
+  nCuotas: number;
+}
+
+/**
+ * Cronograma francés con días de gracia elegidos por el comerciante (no derivados del corte).
+ * El capital se capitaliza durante la gracia; la primera cuota vence un mes después del fin de gracia.
+ */
+export const calcularConGracia = (e: EntradaGracia) => {
+  const p = PERIODOS[e.periodoTasa];
+  const C = red2(e.capital);
+  const finGracia = sumarDias(e.fecha, e.diasGracia);
+  const tasaGracia = tasaPeriodo(e.tasaInteres, p, e.diasGracia);
+  const Cg = red2(C.times(dec(1).plus(tasaGracia)));
+  const tem = tasaPeriodo(e.tasaInteres, p, 30);
+  const tea = tasaPeriodo(e.tasaInteres, p, 360);
+  // El día del primer vencimiento se conserva en los meses siguientes.
+  const { cuotaRegular, cuotas } = cronogramaFrances(Cg, tem, e.nCuotas, finGracia, finGracia.d);
+  const interesGracia = Cg.minus(C);
+  const sumaInteres = cuotas.reduce((s, c) => s.plus(c.interes), dec(0));
+  return {
+    capitalInicial: C,
+    finGracia,
+    diasGracia: e.diasGracia,
+    tasaGracia,
+    interesGracia,
+    capitalFinanciado: Cg,
+    tem,
+    tea,
+    cuotaRegular,
+    cuotas,
+    totalIntereses: interesGracia.plus(sumaInteres),
+    totalProgramado: cuotas.reduce((s, c) => s.plus(c.monto), dec(0)),
+  };
+};

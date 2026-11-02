@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../api';
-import { useAuth } from '../auth';
 import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, Tabla, Vacio, ahoraLocal, fd, fdh, money, pct, useCarga } from '../ui';
 
-interface ClienteMin { id: string; dni: string; nombres: string; apellidos: string; moneda?: string; maxCuotas?: number; estado?: string }
-interface ProductoMin { id: string; codigo: string; descripcion: string; precioContado: string; monedaPrecio: string; permiteCredito: boolean; maxCuotasProducto: number; unidadMedida: string }
+interface ClienteMin { id: string; dni: string; nombres: string; apellidos: string; maxCuotas?: number; estado?: string }
+interface ProductoMin { id: string; codigo: string; descripcion: string; precioContado: string; permiteCredito: boolean; maxCuotasProducto: number; unidadMedida: string }
 interface CompraFila { id: string; clienteId: string; cliente: ClienteMin; fechaHora: string; nCuotas: number; capitalInicial: string; capitalFinanciado: string; tea: string; estado: string }
 interface CuotaFila { numero: number; fechaVencimiento: string; saldoInicial: string; interes: string; amortizacion: string; montoCuota: string; saldoFinal: string; estado?: string }
 interface Detalle extends CompraFila {
@@ -15,7 +14,6 @@ interface Detalle extends CompraFila {
 }
 interface Simulacion {
   valido: boolean; errores: string[]; maxCuotasPermitidas: number; limiteCredito: string; deudaPendiente: string; creditoDisponibleAntes: string;
-  cliente: { moneda: string };
   calculo: null | {
     items: { codigoProducto: string; descripcion: string; cantidad: number; precioUnitarioAplicado: string; subtotal: string }[];
     capitalInicial: string; fechaCorteCiclo: string; fechaFinGracia: string; diasGracia: number; interesGracia: string; capitalFinanciado: string;
@@ -34,6 +32,7 @@ function DetalleCompra({ id, onCerrar }: { id: string; onCerrar: () => void }) {
     <div className="card mb20">
       <div className="hdr" style={{ marginBottom: 8 }}>
         <div className="t"><h2 style={{ margin: 0 }}>Compra #{c.id} · {c.cliente.nombres} {c.cliente.apellidos}</h2><div className="sub">{fdh(c.fechaHora)} · <Insignia estado={c.estado} /></div></div>
+        <Link className="btn pri" to={`/cronograma?compra=${c.id}`}>Cronograma de pagos</Link>
         <button className="btn" onClick={onCerrar}>Cerrar</button>
       </div>
       <div className="row">
@@ -75,8 +74,7 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
   const [errReg, setErrReg] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
 
-  const cliente = clientes.datos?.find((c) => c.id === clienteId);
-  const credito = (productos.datos ?? []).filter((p) => p.permiteCredito && (!cliente?.moneda || p.monedaPrecio === cliente.moneda));
+  const credito = (productos.datos ?? []).filter((p) => p.permiteCredito);
   const completos = items.filter((i) => i.codigo && Number(i.cantidad) > 0);
   const cuerpo = { clienteId, fechaHora, nCuotas: Number(nCuotas), items: completos.map((i) => ({ codigoProducto: i.codigo, cantidad: Number(i.cantidad) })) };
   const clave = JSON.stringify(cuerpo);
@@ -107,7 +105,6 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
   }
 
   const c = sim?.calculo;
-  const mon = sim?.cliente.moneda ?? cliente?.moneda ?? 'PEN';
   return (
     <div className="row">
       <div className="card" style={{ flex: 2 }}>
@@ -130,10 +127,10 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
         <div className="b" style={{ margin: '4px 0 8px' }}>Productos</div>
         {items.map((it, k) => (
           <div className="itemrow" key={k}>
-            <Campo label={k === 0 ? 'Producto' : ' '} ayuda="Producto o servicio que se lleva. Solo se muestran los que se venden al crédito en la moneda del cliente.">
+            <Campo label={k === 0 ? 'Producto' : ' '} ayuda="Producto o servicio que se lleva. Solo se muestran los que se venden al crédito.">
               <select value={it.codigo} onChange={(e) => setItem(k, { codigo: e.target.value })}>
                 <option value="">Selecciona…</option>
-                {credito.map((p) => <option key={p.id} value={p.codigo}>{p.descripcion} — {money(p.precioContado, p.monedaPrecio)}</option>)}
+                {credito.map((p) => <option key={p.id} value={p.codigo}>{p.descripcion} — {money(p.precioContado)}</option>)}
               </select>
             </Campo>
             <Campo label={k === 0 ? 'Cantidad' : ' '} ayuda="Cuántas unidades (admite hasta 3 decimales, ej. 1.5 kg)." ancho={110}>
@@ -157,24 +154,24 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
         <h2>Cálculo en vivo</h2>
         {!sim ? <div className="m">Elige cliente, productos y cuotas para ver el cálculo.</div> : (
           <>
-            <Kv k="Crédito disponible antes" v={money(sim.creditoDisponibleAntes, mon)} />
+            <Kv k="Crédito disponible antes" v={money(sim.creditoDisponibleAntes)} />
             {c && (
               <>
-                <Kv k="Capital (contado)" v={money(c.capitalInicial, mon)} />
+                <Kv k="Capital (contado)" v={money(c.capitalInicial)} />
                 <Kv k="Corte del ciclo" v={dmy(c.fechaCorteCiclo)} />
                 <Kv k="Fecha de pago (fin de gracia)" v={dmy(c.fechaFinGracia)} />
                 <Kv k="Días de gracia" v={c.diasGracia} />
-                <Kv k="Interés de gracia" v={money(c.interesGracia, mon)} />
-                <Kv k="Capital financiado" v={money(c.capitalFinanciado, mon)} />
+                <Kv k="Interés de gracia" v={money(c.interesGracia)} />
+                <Kv k="Capital financiado" v={money(c.capitalFinanciado)} />
                 <Kv k="TEM" v={pct(c.temPct, 7)} />
                 <Kv k="TEA" v={pct(c.teaPct, 7)} />
-                <Kv k="Cuota regular" v={money(c.cuotaRegular, mon)} grande />
-                <Kv k="Total de intereses" v={money(c.totalIntereses, mon)} />
-                <Kv k="Crédito disponible después" v={money(c.creditoDisponibleDespues, mon)} />
+                <Kv k="Cuota regular" v={money(c.cuotaRegular)} grande />
+                <Kv k="Total de intereses" v={money(c.totalIntereses)} />
+                <Kv k="Crédito disponible después" v={money(c.creditoDisponibleDespues)} />
                 <div className="b mt16 sm">Cronograma</div>
                 <Tabla>
                   <thead><tr><th>N°</th><th>Vence</th><th className="r">Importe</th></tr></thead>
-                  <tbody>{c.cuotas.map((q) => <tr key={q.numero}><td>{q.numero}</td><td>{dmy(q.fechaVencimiento)}</td><td className="r">{money(q.montoCuota, mon)}</td></tr>)}</tbody>
+                  <tbody>{c.cuotas.map((q) => <tr key={q.numero}><td>{q.numero}</td><td>{dmy(q.fechaVencimiento)}</td><td className="r">{money(q.montoCuota)}</td></tr>)}</tbody>
                 </Tabla>
               </>
             )}
@@ -187,41 +184,37 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
 }
 
 export default function Compras() {
-  const { usuario } = useAuth();
-  const edita = usuario?.rol === 'ADMIN_NEGOCIO';
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();
   const ver = params.get('ver');
-  const nueva = params.get('nueva') === '1' && edita;
+  const nueva = params.get('nueva') === '1';
   const [clienteId, setClienteId] = useState('');
   const { datos, error, cargando, recargar } = useCarga(() => api.get<CompraFila[]>(`/compras${clienteId ? `?clienteId=${clienteId}` : ''}`), [clienteId]);
-  const clientes = useCarga(() => (edita ? api.get<ClienteMin[]>('/clientes') : Promise.resolve([] as ClienteMin[])), [edita]);
+  const clientes = useCarga(() => api.get<ClienteMin[]>('/clientes'), []);
 
   return (
     <>
-      <Encabezado ruta="Compras" titulo="Compras al crédito" sub={edita ? 'Registro de ventas fiadas con su cronograma.' : 'Tus compras al crédito y sus cuotas.'}>
-        {edita && !nueva && <button className="btn pri" onClick={() => setParams({ nueva: '1' })}>+ Nueva compra al crédito</button>}
+      <Encabezado ruta="Compras" titulo="Compras al crédito" sub="Registro de ventas fiadas. El cronograma de pagos se entrega al cliente.">
+        {!nueva && <button className="btn pri" onClick={() => setParams({ nueva: '1' })}>+ Nueva compra al crédito</button>}
       </Encabezado>
 
       {nueva && <NuevaCompra onCancelar={() => setParams({})} onListo={(id) => { recargar(); nav(`/compras?ver=${id}`); }} />}
       {ver && <DetalleCompra id={ver} onCerrar={() => setParams({})} />}
 
       <div className="card">
-        {edita && (
-          <div className="tools">
-            <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-              <option value="">Todos los clientes</option>
-              {clientes.datos?.map((c) => <option key={c.id} value={c.id}>{c.apellidos}, {c.nombres}</option>)}
-            </select>
-          </div>
-        )}
+        <div className="tools">
+          <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+            <option value="">Todos los clientes</option>
+            {clientes.datos?.map((c) => <option key={c.id} value={c.id}>{c.apellidos}, {c.nombres}</option>)}
+          </select>
+        </div>
         {cargando && !datos ? <Cargando /> : error ? <Errores error={error} /> : !datos?.length ? <Vacio texto="No hay compras registradas." /> : (
           <Tabla>
-            <thead><tr><th>N°</th>{edita && <th>Cliente</th>}<th>Fecha</th><th>Cuotas</th><th className="r">Capital</th><th className="r">Financiado</th><th className="r">TEA</th><th>Estado</th><th /></tr></thead>
+            <thead><tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Cuotas</th><th className="r">Capital</th><th className="r">Financiado</th><th className="r">TEA</th><th>Estado</th><th /></tr></thead>
             <tbody>
               {datos.map((c) => (
                 <tr key={c.id} className="click" onClick={() => setParams({ ver: c.id })}>
-                  <td>#{c.id}</td>{edita && <td className="b">{c.cliente.apellidos}, {c.cliente.nombres}</td>}
+                  <td>#{c.id}</td><td className="b">{c.cliente.apellidos}, {c.cliente.nombres}</td>
                   <td>{fdh(c.fechaHora)}</td><td>{c.nCuotas}</td>
                   <td className="r">{money(c.capitalInicial)}</td><td className="r">{money(c.capitalFinanciado)}</td><td className="r">{pct(c.tea, 2)}</td>
                   <td><Insignia estado={c.estado} /></td><td className="r"><button className="btn sm">Ver</button></td>

@@ -4,18 +4,18 @@ import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, PERIODOS, Tabla, Va
 
 interface Calculos { p: number; pMora: number; tem: string; temPct: string; teaInteresPct: string; teaMoraPct: string }
 interface Cliente {
-  id: string; dni: string; nombres: string; apellidos: string; direccion: string | null; telefono: string | null; moneda: string;
+  id: string; dni: string; nombres: string; apellidos: string; direccion: string | null; telefono: string | null;
   tasaInteres: string; periodoTasa: string; tasaMora: string; periodoTasaMora: string; limiteCredito: string; maxCuotas: number;
-  diaCorte: number; horaCorte: string; diaPago: number; aceptaPrivacidad: boolean; estado: string; cuenta: string | null; calculos: Calculos;
+  diaCorte: number; horaCorte: string; diaPago: number; aceptaPrivacidad: boolean; estado: string; calculos: Calculos;
 }
 interface Prevision { ok: boolean; errores: string[]; calculos: Calculos; topes: { topeInteresTEA: string; topeMoraTEA: string } }
 interface Resumen { clientes: { id: string; deudaPendiente: string }[] }
 
 const VACIO = {
-  dni: '', nombres: '', apellidos: '', direccion: '', telefono: '', moneda: 'PEN',
+  dni: '', nombres: '', apellidos: '', direccion: '', telefono: '',
   tasaInteres: '', periodoTasa: 'MENSUAL', tasaMora: '', periodoTasaMora: 'ANUAL',
   limiteCredito: '', maxCuotas: '6', diaCorte: '20', horaCorte: '23:59', diaPago: '26',
-  aceptaPrivacidad: false, estado: 'ACTIVO', usuario: '', clave: '',
+  aceptaPrivacidad: false, estado: 'ACTIVO',
 };
 type Form = typeof VACIO;
 
@@ -39,20 +39,20 @@ export default function Clientes() {
     if (!editando || f.tasaInteres === '' || f.tasaMora === '') { setPrev(null); setErrPrev(null); return; }
     const t = setTimeout(() => {
       api.post<Prevision>('/clientes/calcular', {
-        moneda: f.moneda, tasaInteres: Number(f.tasaInteres), periodoTasa: f.periodoTasa, tasaMora: Number(f.tasaMora), periodoTasaMora: f.periodoTasaMora,
+        tasaInteres: Number(f.tasaInteres), periodoTasa: f.periodoTasa, tasaMora: Number(f.tasaMora), periodoTasaMora: f.periodoTasaMora,
       }).then((r) => { setPrev(r); setErrPrev(null); }).catch((e) => { setPrev(null); setErrPrev(e instanceof ApiError ? e.message : 'No se pudo calcular'); });
     }, 350);
     return () => clearTimeout(t);
-  }, [editando, f.moneda, f.tasaInteres, f.periodoTasa, f.tasaMora, f.periodoTasaMora]);
+  }, [editando, f.tasaInteres, f.periodoTasa, f.tasaMora, f.periodoTasaMora]);
 
   function abrir(c?: Cliente) {
     setErrForm(null);
     setEditando(c ? c.id : 'nuevo');
     setF(c ? {
-      dni: c.dni, nombres: c.nombres, apellidos: c.apellidos, direccion: c.direccion ?? '', telefono: c.telefono ?? '', moneda: c.moneda,
+      dni: c.dni, nombres: c.nombres, apellidos: c.apellidos, direccion: c.direccion ?? '', telefono: c.telefono ?? '',
       tasaInteres: String(Number(c.tasaInteres)), periodoTasa: c.periodoTasa, tasaMora: String(Number(c.tasaMora)), periodoTasaMora: c.periodoTasaMora,
       limiteCredito: String(Number(c.limiteCredito)), maxCuotas: String(c.maxCuotas), diaCorte: String(c.diaCorte), horaCorte: c.horaCorte,
-      diaPago: String(c.diaPago), aceptaPrivacidad: c.aceptaPrivacidad, estado: c.estado, usuario: '', clave: '',
+      diaPago: String(c.diaPago), aceptaPrivacidad: c.aceptaPrivacidad, estado: c.estado,
     } : VACIO);
   }
 
@@ -62,14 +62,13 @@ export default function Clientes() {
     setGuardando(true);
     const cuerpo: Record<string, unknown> = {
       nombres: f.nombres.trim(), apellidos: f.apellidos.trim(), direccion: f.direccion.trim() || undefined, telefono: f.telefono.trim() || undefined,
-      moneda: f.moneda, tasaInteres: Number(f.tasaInteres), periodoTasa: f.periodoTasa, tasaMora: Number(f.tasaMora), periodoTasaMora: f.periodoTasaMora,
+      tasaInteres: Number(f.tasaInteres), periodoTasa: f.periodoTasa, tasaMora: Number(f.tasaMora), periodoTasaMora: f.periodoTasaMora,
       limiteCredito: Number(f.limiteCredito), maxCuotas: Number(f.maxCuotas), diaCorte: Number(f.diaCorte), horaCorte: f.horaCorte, diaPago: Number(f.diaPago),
     };
     try {
       if (editando === 'nuevo') {
         await api.post('/clientes', {
           ...cuerpo, dni: f.dni.trim(), aceptaPrivacidad: f.aceptaPrivacidad,
-          cuenta: f.usuario.trim() ? { username: f.usuario.trim(), password: f.clave } : undefined,
         });
       } else {
         await api.patch(`/clientes/${editando}`, { ...cuerpo, estado: f.estado });
@@ -86,7 +85,7 @@ export default function Clientes() {
   async function cambiarEstado(c: Cliente) {
     try {
       if (c.estado === 'ACTIVO') {
-        if (!confirm(`¿Dar de baja a ${c.nombres} ${c.apellidos}? También se bloquea su cuenta de acceso.`)) return;
+        if (!confirm(`¿Dar de baja a ${c.nombres} ${c.apellidos}? Se conserva su historial.`)) return;
         await api.del(`/clientes/${c.id}`);
       } else {
         await api.patch(`/clientes/${c.id}`, { estado: 'ACTIVO' });
@@ -120,10 +119,7 @@ export default function Clientes() {
               <Campo label="Teléfono" ayuda="Celular o teléfono de contacto (opcional)."><input value={f.telefono} onChange={(e) => set('telefono', e.target.value)} maxLength={15} /></Campo>
             </div>
             <div className="frow">
-              <Campo label="Moneda" ayuda="Moneda del crédito. Solo podrá comprar productos con precio en esta moneda.">
-                <select value={f.moneda} onChange={(e) => set('moneda', e.target.value)}><option>PEN</option><option>USD</option></select>
-              </Campo>
-              <Campo label="Tasa de interés (%)" ayuda="Tasa efectiva pactada para el crédito, en porcentaje (ej. 3 para 3 %). El periodo se elige al lado.">
+              <Campo label="Tasa efectiva de interés (%)" ayuda="Tasa efectiva pactada para el crédito, en porcentaje (ej. 3 para 3 %). El periodo se elige al lado.">
                 <input type="number" step="0.0000001" min="0.0000001" value={f.tasaInteres} onChange={(e) => set('tasaInteres', e.target.value)} required />
               </Campo>
               <Campo label="Periodo de la tasa" ayuda="Cada cuánto se cobra esa tasa: mensual, bimestral, anual… La app la convierte a mes (TEM) y a año (TEA).">
@@ -131,7 +127,7 @@ export default function Clientes() {
               </Campo>
             </div>
             <div className="frow">
-              <Campo label="Tasa moratoria (%)" ayuda="Tasa efectiva que se cobra por cada periodo de atraso en el pago. Se calcula solo sobre lo vencido.">
+              <Campo label="Tasa efectiva moratoria (%)" ayuda="Tasa efectiva que se cobra por cada periodo de atraso en el pago. Se calcula solo sobre lo vencido.">
                 <input type="number" step="0.0000001" min="0" value={f.tasaMora} onChange={(e) => set('tasaMora', e.target.value)} required />
               </Campo>
               <Campo label="Periodo de la tasa moratoria" ayuda="Periodo al que corresponde la tasa moratoria.">
@@ -139,11 +135,11 @@ export default function Clientes() {
               </Campo>
             </div>
             <div className="frow">
-              <Campo label="Límite de crédito" ayuda="Máximo que el cliente puede deber en capital. No se aceptan compras que lo excedan.">
-                <input type="number" step="0.01" min="0.01" value={f.limiteCredito} onChange={(e) => set('limiteCredito', e.target.value)} required />
+              <Campo label="Límite de crédito (S/)" ayuda="Máximo que el cliente puede deber en capital, hasta S/ 250 (créditos pequeños). No se aceptan compras que lo excedan.">
+                <input type="number" step="0.01" min="0.01" max="250" value={f.limiteCredito} onChange={(e) => set('limiteCredito', e.target.value)} required />
               </Campo>
-              <Campo label="Máximo de cuotas" ayuda="Número máximo de cuotas mensuales que se le permite al cliente (hasta 36).">
-                <input type="number" min="1" max="36" value={f.maxCuotas} onChange={(e) => set('maxCuotas', e.target.value)} required />
+              <Campo label="Máximo de cuotas" ayuda="Número máximo de cuotas mensuales que se le permite al cliente (hasta 12).">
+                <input type="number" min="1" max="12" value={f.maxCuotas} onChange={(e) => set('maxCuotas', e.target.value)} required />
               </Campo>
             </div>
             <div className="frow">
@@ -159,21 +155,13 @@ export default function Clientes() {
             </div>
             {nuevo ? (
               <>
-                <div className="frow">
-                  <Campo label="Usuario de acceso (opcional)" ayuda="Si lo llenas, el cliente podrá iniciar sesión para consultar sus compras y estados de cuenta.">
-                    <input value={f.usuario} onChange={(e) => set('usuario', e.target.value)} maxLength={40} autoComplete="off" />
-                  </Campo>
-                  <Campo label="Contraseña inicial" ayuda="Mínimo 8 caracteres. Se guarda cifrada. Solo se pide si indicas un usuario.">
-                    <input type="password" value={f.clave} onChange={(e) => set('clave', e.target.value)} minLength={8} required={!!f.usuario.trim()} autoComplete="new-password" />
-                  </Campo>
-                </div>
                 <div className="f chk">
                   <input id="priv" type="checkbox" checked={f.aceptaPrivacidad} onChange={(e) => set('aceptaPrivacidad', e.target.checked)} required />
                   <label htmlFor="priv">El cliente acepta el tratamiento de sus datos personales (Ley 29733)</label>
                 </div>
               </>
             ) : (
-              <Campo label="Estado" ayuda="Un cliente INACTIVO no puede comprar ni iniciar sesión. Para pasarlo a inactivo no debe tener cuotas pendientes.">
+              <Campo label="Estado" ayuda="Un cliente INACTIVO no puede comprar al crédito. Para darlo de baja no debe tener cuotas pendientes.">
                 <select value={f.estado} onChange={(e) => set('estado', e.target.value)}><option>ACTIVO</option><option>INACTIVO</option></select>
               </Campo>
             )}
@@ -217,11 +205,11 @@ export default function Clientes() {
             <tbody>
               {datos.map((c) => (
                 <tr key={c.id}>
-                  <td><div className="b">{c.apellidos}, {c.nombres}</div><div className="m sm">DNI {c.dni}{c.cuenta ? ` · usuario ${c.cuenta}` : ''}</div></td>
+                  <td><div className="b">{c.apellidos}, {c.nombres}</div><div className="m sm">DNI {c.dni}</div></td>
                   <td>{Number(c.tasaInteres)} % {c.periodoTasa.toLowerCase()}</td>
                   <td className="r">{pct(c.calculos.teaInteresPct, 2)}</td>
-                  <td className="r">{money(c.limiteCredito, c.moneda)}</td>
-                  <td className="r">{deuda.has(c.id) ? money(deuda.get(c.id), c.moneda) : '—'}</td>
+                  <td className="r">{money(c.limiteCredito)}</td>
+                  <td className="r">{deuda.has(c.id) ? money(deuda.get(c.id)) : '—'}</td>
                   <td>día {c.diaCorte} ({c.horaCorte}) / día {c.diaPago}</td>
                   <td><Insignia estado={c.estado} /></td>
                   <td className="r">

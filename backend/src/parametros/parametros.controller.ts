@@ -1,17 +1,14 @@
-import { Body, Controller, Get, Put, Query } from '@nestjs/common';
-import { Moneda } from '@prisma/client';
-import { IsEnum, IsNumber, IsOptional, IsPositive, Matches, Max } from 'class-validator';
+import { Body, Controller, Get, Put } from '@nestjs/common';
+import { IsNumber, IsPositive, Matches, Max } from 'class-validator';
 import { Roles } from '../common/decorators';
-import { ParametrosService } from './parametros.service';
+import { LIMITE_MAXIMO_CREDITO, MAX_CUOTAS, ParametrosService } from './parametros.service';
 
 class FijarTopesDto {
-  @IsEnum(Moneda) moneda: Moneda;
-
   @IsNumber({ maxDecimalPlaces: 7 }) @IsPositive() @Max(1000)
   topeInteresTEA: number;
 
-  @IsOptional() @IsNumber({ maxDecimalPlaces: 7 }) @IsPositive() @Max(1000)
-  topeMoraTEA?: number;
+  @IsNumber({ maxDecimalPlaces: 7 }) @IsPositive() @Max(1000)
+  topeMoraTEA: number;
 
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'vigenteDesde debe ser YYYY-MM-DD' })
   vigenteDesde: string;
@@ -23,16 +20,18 @@ export class ParametrosController {
 
   @Get()
   @Roles('ADMIN_SISTEMA', 'ADMIN_NEGOCIO')
-  listar(@Query('moneda') moneda?: Moneda) {
-    return this.svc.listar(moneda && Object.values(Moneda).includes(moneda) ? moneda : undefined);
+  async listar() {
+    return {
+      parametros: await this.svc.listar(),
+      limites: { limiteMaximoCredito: LIMITE_MAXIMO_CREDITO, maxCuotas: MAX_CUOTAS },
+    };
   }
 
-  /** Topes BCRP vigentes hoy (los usa el formulario de clientes). */
+  /** Topes de TEA vigentes hoy (los usa el formulario de clientes). */
   @Get('topes')
   @Roles('ADMIN_SISTEMA', 'ADMIN_NEGOCIO')
-  async topes() {
-    const [PEN, USD] = await Promise.all([this.svc.topes('PEN'), this.svc.topes('USD')]);
-    return { PEN, USD };
+  topes() {
+    return this.svc.topes();
   }
 
   @Put('topes')

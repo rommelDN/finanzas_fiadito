@@ -1,6 +1,5 @@
 import { FormEvent, useState } from 'react';
 import { ApiError, api, qs } from '../api';
-import { useAuth } from '../auth';
 import { Campo, Cargando, Encabezado, Errores, Insignia, Tabla, UNIDADES, Vacio, money, useCarga } from '../ui';
 
 interface Producto {
@@ -11,7 +10,6 @@ interface Producto {
   proveedor: string | null;
   unidadMedida: string;
   imagenUrl: string | null;
-  monedaPrecio: string;
   precioContado: string;
   precioCredito: string | null;
   permiteCredito: boolean;
@@ -20,7 +18,7 @@ interface Producto {
 }
 
 const VACIO = {
-  codigo: '', descripcion: '', marca: '', proveedor: '', unidadMedida: 'UND', imagenUrl: '', monedaPrecio: 'PEN',
+  codigo: '', descripcion: '', marca: '', proveedor: '', unidadMedida: 'UND', imagenUrl: '',
   precioContado: '', precioCredito: '', permiteCredito: true, maxCuotasProducto: '6', estado: 'ACTIVO',
 };
 type Form = typeof VACIO;
@@ -29,8 +27,6 @@ const Miniatura = ({ p }: { p: Producto }) =>
   p.imagenUrl ? <img className="thumb" src={p.imagenUrl} alt={p.descripcion} /> : <div className="thumb">{p.codigo.slice(0, 3)}</div>;
 
 export default function Productos() {
-  const { usuario } = useAuth();
-  const edita = usuario?.rol === 'ADMIN_NEGOCIO';
   const [q, setQ] = useState('');
   const [estado, setEstado] = useState('');
   const { datos, error, cargando, recargar } = useCarga(() => api.get<Producto[]>(`/productos${qs({ q, estado })}`), [q, estado]);
@@ -48,7 +44,7 @@ export default function Productos() {
     setEditando(p ? p.id : 'nuevo');
     setF(p ? {
       codigo: p.codigo, descripcion: p.descripcion, marca: p.marca ?? '', proveedor: p.proveedor ?? '', unidadMedida: p.unidadMedida,
-      imagenUrl: p.imagenUrl ?? '', monedaPrecio: p.monedaPrecio, precioContado: p.precioContado, precioCredito: p.precioCredito ?? '',
+      imagenUrl: p.imagenUrl ?? '', precioContado: p.precioContado, precioCredito: p.precioCredito ?? '',
       permiteCredito: p.permiteCredito, maxCuotasProducto: String(p.maxCuotasProducto), estado: p.estado,
     } : VACIO);
   }
@@ -58,7 +54,7 @@ export default function Productos() {
     setErrForm(null);
     setGuardando(true);
     const cuerpo: Record<string, unknown> = {
-      codigo: f.codigo.trim(), descripcion: f.descripcion.trim(), unidadMedida: f.unidadMedida, monedaPrecio: f.monedaPrecio,
+      codigo: f.codigo.trim(), descripcion: f.descripcion.trim(), unidadMedida: f.unidadMedida,
       precioContado: Number(f.precioContado), permiteCredito: f.permiteCredito, maxCuotasProducto: Number(f.maxCuotasProducto), estado: f.estado,
       marca: f.marca.trim() || undefined, proveedor: f.proveedor.trim() || undefined,
       precioCredito: f.precioCredito === '' ? undefined : Number(f.precioCredito),
@@ -92,8 +88,8 @@ export default function Productos() {
 
   return (
     <>
-      <Encabezado ruta="Productos" titulo={edita ? 'Productos y servicios' : 'Catálogo'} sub={edita ? 'Lo que tu tienda vende al crédito.' : 'Productos disponibles en tu tienda.'}>
-        {edita && <button className="btn pri" onClick={() => abrir()}>+ Nuevo producto</button>}
+      <Encabezado ruta="Productos" titulo="Productos y servicios" sub="Lo que tu tienda vende al crédito. Precios en soles (S/).">
+        <button className="btn pri" onClick={() => abrir()}>+ Nuevo producto</button>
       </Encabezado>
 
       {editando && (
@@ -119,19 +115,16 @@ export default function Productos() {
             </Campo>
           </div>
           <div className="frow">
-            <Campo label="Moneda del precio" ayuda="Moneda en que está expresado el precio. Debe coincidir con la moneda del cliente al comprar.">
-              <select value={f.monedaPrecio} onChange={(e) => set('monedaPrecio', e.target.value)}><option>PEN</option><option>USD</option></select>
-            </Campo>
             <Campo label="Precio al contado" ayuda="Es el precio que se usa en todos los cálculos del crédito. La app agrega los intereses aparte.">
-              <input type="number" step="0.01" min="0.01" value={f.precioContado} onChange={(e) => set('precioContado', e.target.value)} required />
+              <input type="number" step="0.01" min="0.01" max="250" value={f.precioContado} onChange={(e) => set('precioContado', e.target.value)} required />
             </Campo>
             <Campo label="Precio de lista (crédito)" ayuda="Precio referencial para mostrar al cliente. No entra en ningún cálculo: el interés se calcula sobre el precio al contado.">
-              <input type="number" step="0.01" min="0" value={f.precioCredito} onChange={(e) => set('precioCredito', e.target.value)} />
+              <input type="number" step="0.01" min="0" max="250" value={f.precioCredito} onChange={(e) => set('precioCredito', e.target.value)} />
             </Campo>
           </div>
           <div className="frow">
             <Campo label="Máximo de cuotas" ayuda="Tope de cuotas para este producto. Una compra usa el menor entre este valor, el del cliente y el de los demás productos.">
-              <input type="number" min="1" max="36" value={f.maxCuotasProducto} onChange={(e) => set('maxCuotasProducto', e.target.value)} required />
+              <input type="number" min="1" max="12" value={f.maxCuotasProducto} onChange={(e) => set('maxCuotasProducto', e.target.value)} required />
             </Campo>
             <Campo label="Estado" ayuda="Un producto INACTIVO no se puede vender. Es la forma de darlo de baja sin perder el historial.">
               <select value={f.estado} onChange={(e) => set('estado', e.target.value)}><option>ACTIVO</option><option>INACTIVO</option></select>
@@ -161,35 +154,29 @@ export default function Productos() {
       <div className="card">
         <div className="tools">
           <input placeholder="Buscar por código, descripción o marca…" value={q} onChange={(e) => setQ(e.target.value)} />
-          {edita && (
-            <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-              <option value="">Todos los estados</option><option>ACTIVO</option><option>INACTIVO</option>
-            </select>
-          )}
+          <select value={estado} onChange={(e) => setEstado(e.target.value)}>
+            <option value="">Todos los estados</option><option>ACTIVO</option><option>INACTIVO</option>
+          </select>
         </div>
         {cargando && !datos ? <Cargando /> : error ? <Errores error={error} /> : !datos?.length ? <Vacio texto="No hay productos." /> : (
           <Tabla>
             <thead>
-              <tr><th>Producto</th><th>Unidad</th><th className="r">Contado</th><th className="r">Lista (crédito)</th><th>Máx. cuotas</th><th>Crédito</th>{edita && <><th>Estado</th><th /></>}</tr>
+              <tr><th>Producto</th><th>Unidad</th><th className="r">Contado</th><th className="r">Lista (crédito)</th><th>Máx. cuotas</th><th>Crédito</th><th>Estado</th><th /></tr>
             </thead>
             <tbody>
               {datos.map((p) => (
                 <tr key={p.id}>
                   <td><div className="prod"><Miniatura p={p} /><div><div className="b">{p.descripcion}</div><div className="m sm">{p.codigo}{p.marca ? ` · ${p.marca}` : ''}</div></div></div></td>
                   <td>{p.unidadMedida}</td>
-                  <td className="r">{money(p.precioContado, p.monedaPrecio)}</td>
-                  <td className="r m">{p.precioCredito ? money(p.precioCredito, p.monedaPrecio) : '—'}</td>
+                  <td className="r">{money(p.precioContado)}</td>
+                  <td className="r m">{p.precioCredito ? money(p.precioCredito) : '—'}</td>
                   <td>{p.maxCuotasProducto}</td>
                   <td>{p.permiteCredito ? <span className="badge ok">Sí</span> : <span className="badge gray">No</span>}</td>
-                  {edita && (
-                    <>
-                      <td><Insignia estado={p.estado} /></td>
-                      <td className="r">
-                        <button className="btn sm" onClick={() => abrir(p)}>Editar</button>{' '}
-                        <button className={`btn sm ${p.estado === 'ACTIVO' ? 'danger' : ''}`} onClick={() => cambiarEstado(p)}>{p.estado === 'ACTIVO' ? 'Dar de baja' : 'Reactivar'}</button>
-                      </td>
-                    </>
-                  )}
+                  <td><Insignia estado={p.estado} /></td>
+                  <td className="r">
+                    <button className="btn sm" onClick={() => abrir(p)}>Editar</button>{' '}
+                    <button className={`btn sm ${p.estado === 'ACTIVO' ? 'danger' : ''}`} onClick={() => cambiarEstado(p)}>{p.estado === 'ACTIVO' ? 'Dar de baja' : 'Reactivar'}</button>
+                  </td>
                 </tr>
               ))}
             </tbody>

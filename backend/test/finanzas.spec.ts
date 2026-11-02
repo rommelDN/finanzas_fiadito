@@ -1,5 +1,6 @@
 import {
   calcularCiclo,
+  calcularConGracia,
   calcularCompra,
   calcularPago,
   calcularTasas,
@@ -164,5 +165,50 @@ describe('Pago y mora', () => {
     const r = calcularPago(o, f('05/12/2026'), f('05/12/2026'), CLI.carlos.tasaMora, CLI.carlos.periodoTasaMora);
     expect(r.interesesMora.toFixed(2)).toBe('0.00');
     expect(r.totalPagar.toFixed(2)).toBe('67.16');
+  });
+});
+
+describe('Días de mora indicados a mano', () => {
+  it('Rosa con 10 días de mora (aunque la fecha real sea distinta): mora 0.16, total 47.11', () => {
+    const o = [{ vencimiento: f('26/10/2026'), interes: dec('4.01'), amortizacion: dec('42.94') }];
+    const r = calcularPago(o, f('26/10/2026'), f('26/10/2026'), CLI.rosa.tasaMora, CLI.rosa.periodoTasaMora, 10);
+    expect(r.diasMora).toBe(10);
+    expect(r.interesesMora.toFixed(2)).toBe('0.16');
+    expect(r.totalPagar.toFixed(2)).toBe('47.11');
+  });
+
+  it('0 días de mora anula la mora aunque la fecha real sea posterior', () => {
+    const o = [{ vencimiento: f('26/10/2026'), interes: dec('4.01'), amortizacion: dec('42.94') }];
+    const r = calcularPago(o, f('26/10/2026'), f('06/11/2026'), CLI.rosa.tasaMora, CLI.rosa.periodoTasaMora, 0);
+    expect(r.interesesMora.toFixed(2)).toBe('0.00');
+    expect(r.totalPagar.toFixed(2)).toBe('46.95');
+  });
+});
+
+describe('Cronograma con días de gracia elegidos', () => {
+  const rosa = { tasaInteres: CLI.rosa.tasaInteres, periodoTasa: CLI.rosa.periodoTasa };
+
+  it('11 días de gracia sobre CR1 reproduce la cuota 46.95 y el capital financiado 132.74', () => {
+    const r = calcularConGracia({ capital: '131.30', ...rosa, fecha: f('15/09/2026'), diasGracia: 11, nCuotas: 3 });
+    expect(r.capitalFinanciado.toFixed(2)).toBe('132.74');
+    expect(r.cuotaRegular.toFixed(2)).toBe('46.95');
+    expect(fechaDMY(r.finGracia)).toBe('26/09/2026');
+    expect(r.cuotas.map((c) => fechaDMY(c.vencimiento))).toEqual(['26/10/2026', '26/11/2026', '26/12/2026']);
+  });
+
+  it('30 días de gracia = un mes: el capital crece exactamente la TEM', () => {
+    const r = calcularConGracia({ capital: '131.30', ...rosa, fecha: f('15/09/2026'), diasGracia: 30, nCuotas: 3 });
+    expect(r.interesGracia.toFixed(2)).toBe('3.97');
+    expect(r.capitalFinanciado.toFixed(2)).toBe('135.27');
+    expect(fechaDMY(r.finGracia)).toBe('15/10/2026');
+    expect(fechaDMY(r.cuotas[0].vencimiento)).toBe('15/11/2026');
+  });
+
+  it('sin gracia no se capitaliza nada y el saldo final es 0', () => {
+    const r = calcularConGracia({ capital: '100', ...rosa, fecha: f('31/01/2027'), diasGracia: 0, nCuotas: 3 });
+    expect(r.interesGracia.toFixed(2)).toBe('0.00');
+    // El día 31 se conserva: 28/02/2027 y luego 31/03/2027.
+    expect(r.cuotas.map((c) => fechaDMY(c.vencimiento))).toEqual(['28/02/2027', '31/03/2027', '30/04/2027']);
+    expect(r.cuotas[2].saldoFinal.toFixed(2)).toBe('0.00');
   });
 });

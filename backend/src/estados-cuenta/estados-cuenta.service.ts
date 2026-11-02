@@ -1,12 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cliente, MedioPago, Prisma } from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cliente, Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { fechaISOValida, hoyLimaISO } from '../common/lima';
 import { PrismaService } from '../common/prisma.service';
 import { Fecha, calcularPago, cmpFecha, dec, fechaISO, mk, parseISO } from '../finanzas';
-
-type Db = PrismaService | Prisma.TransactionClient;
-type Alcance = { tiendaId: bigint; clienteId?: bigint | null };
 
 const m2 = (x: Decimal) => x.toFixed(2);
 const fechaDe = (d: Date): Fecha => parseISO(d.toISOString());
@@ -27,10 +24,20 @@ export const ultimoCorte = (diaCorte: number, hasta: Fecha): Fecha => {
   return cmpFecha(c, hasta) > 0 ? mk(hasta.y, hasta.m - 1, diaCorte) : c;
 };
 
+/** Marca el estado de cuenta como PAGADO cuando todas sus cuotas están pagadas. */
+export async function refrescarEstado(tx: Prisma.TransactionClient, estadoCuentaId: bigint | null) {
+  if (!estadoCuentaId) return;
+  const pendientes = await tx.cuota.count({ where: { estadoCuentaId, estado: 'PENDIENTE' } });
+  await tx.estadoCuenta.update({ where: { id: estadoCuentaId }, data: { estado: pendientes ? 'PENDIENTE' : 'PAGADO' } });
+}
+
 const incluir = {
-  cliente: { select: { id: true, dni: true, nombres: true, apellidos: true } },
+  cliente: { select: { id: true, dni: true, nombres: true, apellidos: true, tasaMora: true, periodoTasaMora: true } },
   items: { orderBy: { id: 'asc' as const } },
-  pago: true,
+  cuotas: {
+    orderBy: [{ compraId: 'asc' as const }, { numero: 'asc' as const }],
+    include: { pago: true, compra: { select: { id: true, nCuotas: true } } },
+  },
 };
 
 @Injectable()
@@ -117,7 +124,7 @@ export class EstadosCuentaService {
     }
     const r = await this.generarParaCliente(cliente, corte);
     if (!r.estado) throw new NotFoundException('No hay cuotas por cobrar en ese ciclo: no se genera estado de cuenta');
-    return r.estado;
+    return this.conMora(r.estado);
   }
 
   /**
@@ -144,125 +151,43 @@ export class EstadosCuentaService {
 
   // ---------------------------------------------------------------- consulta
 
-  private where(a: Alcance): Prisma.EstadoCuentaWhereInput {
-    return { cliente: { tiendaId: a.tiendaId, ...(a.clienteId ? { id: a.clienteId } : {}) } };
-  }
-
-  listar(a: Alcance, f: { clienteId?: bigint; estado?: 'PENDIENTE' | 'PAGADO' }) {
+  listar(tiendaId: bigint, f: { clienteId?: bigint; estado?: 'PENDIENTE' | 'PAGADO' }) {
     return this.prisma.estadoCuenta.findMany({
       where: {
-        ...this.where(a),
-        ...(f.clienteId && !a.clienteId ? { clienteId: f.clienteId } : {}),
+        cliente: { tiendaId },
+        ...(f.clienteId ? { clienteId: f.clienteId } : {}),
         ...(f.estado ? { estado: f.estado } : {}),
       },
       orderBy: [{ fechaCorte: 'desc' }, { id: 'desc' }],
-      include: { cliente: { select: { id: true, dni: true, nombres: true, apellidos: true } }, pago: true },
+      include: { cliente: { select: { id: true, dni: true, nombres: true, apellidos: true } } },
     });
   }
 
-  async obtener(a: Alcance, id: bigint) {
-    const e = await this.prisma.estadoCuenta.findFirst({ where: { id, ...this.where(a) }, include: incluir });
+  async obtener(tiendaId: bigint, id: bigint) {
+    const e = await this.prisma.estadoCuenta.findFirst({ where: { id, cliente: { tiendaId } }, include: incluir });
     if (!e) throw new NotFoundException('Estado de cuenta no encontrado');
-    return e;
+    return this.conMora(e);
   }
 
-  // ---------------------------------------------------------------- pago y mora
-
-  private async calcular(db: Db, a: Alcance, id: bigint, fechaPagoReal: string) {
-    if (!fechaISOValida(fechaPagoReal)) throw new BadRequestException('fechaPagoReal debe ser una fecha YYYY-MM-DD válida');
-    const estado = await db.estadoCuenta.findFirst({
-      where: { id, ...this.where(a) },
-      include: { cliente: true, cuotas: { orderBy: [{ compraId: 'asc' }, { numero: 'asc' }] } },
-    });
-    if (!estado) throw new NotFoundException('Estado de cuenta no encontrado');
-    const real = parseISO(fechaPagoReal);
-    if (cmpFecha(real, fechaDe(estado.fechaCorte)) < 0) {
-      throw new BadRequestException('La fecha de pago no puede ser anterior a la fecha de corte del estado de cuenta');
-    }
-    const r = calcularPago(
-      estado.cuotas.map((c) => ({
-        vencimiento: fechaDe(c.fechaVencimiento),
-        interes: dec(c.interes.toString()),
-        amortizacion: dec(c.amortizacion.toString()),
-      })),
-      fechaDe(estado.fechaPago),
-      real,
-      estado.cliente.tasaMora.toString(),
-      estado.cliente.periodoTasaMora,
-    );
-    return { estado, r, real };
-  }
-
-  /** Vista previa del pago ("Pagos"): días de mora, tasa, mora, total a pagar e imputación. No guarda. */
-  async calculoPago(a: Alcance, id: bigint, fechaPagoReal: string = hoyLimaISO()) {
-    const { estado, r } = await this.calcular(this.prisma, a, id, fechaPagoReal);
-    return {
-      estadoCuentaId: estado.id,
-      estado: estado.estado,
-      fechaPago: fechaISO(fechaDe(estado.fechaPago)),
-      fechaPagoReal,
-      diasMora: r.diasMora,
-      tasaMoraPeriodoPct: r.tasaMoraPeriodo.times(100).toFixed(7),
-      totalCapital: m2(r.totalCapital),
-      totalInteresesCuotas: m2(r.totalInteresesCuotas),
-      interesesMora: m2(r.interesesMora),
-      totalPagar: m2(r.totalPagar),
-      /** Prelación: mora → intereses de cuotas → capital. */
-      imputacion: { mora: m2(r.interesesMora), intereses: m2(r.totalInteresesCuotas), capital: m2(r.totalCapital) },
-    };
-  }
-
-  /** Registra el pago. Debe ser exactamente el total (sin pagos parciales) y un estado solo se paga una vez. */
-  async pagar(a: Alcance, id: bigint, d: { fechaPagoReal?: string; medioPago: MedioPago; montoPagado: number }) {
-    const fechaPagoReal = d.fechaPagoReal ?? hoyLimaISO();
-    await this.prisma.$transaction(async (tx) => {
-      // Bloquea el estado: dos pagos simultáneos no pueden cancelarlo dos veces.
-      await tx.$queryRaw`SELECT id FROM estado_cuenta WHERE id = ${id} FOR UPDATE`;
-      const { estado, r } = await this.calcular(tx, a, id, fechaPagoReal);
-      if (estado.estado === 'PAGADO') throw new ConflictException('El estado de cuenta ya fue cancelado');
-      if (!dec(d.montoPagado).eq(r.totalPagar)) {
-        throw new BadRequestException(
-          `El pago debe ser exactamente ${m2(r.totalPagar)} (no se aceptan pagos parciales ni excedentes); se recibió ${m2(dec(d.montoPagado))}`,
+  /**
+   * Agrega la mora acumulada a hoy de las cuotas vencidas sin pagar (ítem separado "intereses por mora").
+   * La mora definitiva se fija al pagar cada cuota.
+   */
+  private conMora<T extends { cliente: { tasaMora: Prisma.Decimal; periodoTasaMora: any }; cuotas: any[]; fechaPago: Date }>(e: T) {
+    const hoy = parseISO(hoyLimaISO());
+    const moraHoy = e.cuotas
+      .filter((c) => c.estado === 'PENDIENTE' && cmpFecha(fechaDe(c.fechaVencimiento), hoy) < 0)
+      .map((c) => {
+        const r = calcularPago(
+          [{ vencimiento: fechaDe(c.fechaVencimiento), interes: dec(c.interes.toString()), amortizacion: dec(c.amortizacion.toString()) }],
+          fechaDe(c.fechaVencimiento),
+          hoy,
+          e.cliente.tasaMora.toString(),
+          e.cliente.periodoTasaMora,
         );
-      }
-      await tx.pago.create({
-        data: {
-          estadoCuentaId: id,
-          fechaPagoReal: aDate(parseISO(fechaPagoReal)),
-          diasMora: r.diasMora,
-          tasaMoraPeriodo: r.diasMora > 0 ? r.tasaMoraPeriodo.toFixed(12) : null,
-          montoMora: m2(r.interesesMora),
-          montoInteres: m2(r.totalInteresesCuotas),
-          montoCapital: m2(r.totalCapital),
-          montoTotal: m2(r.totalPagar),
-          medioPago: d.medioPago,
-        },
+        return { cuotaId: c.id, compraId: c.compra.id, numero: c.numero, dias: r.diasMora, mora: m2(r.interesesMora) };
       });
-      // La mora aparece como ítem separado "intereses por mora".
-      if (r.interesesMora.gt(0)) {
-        await tx.estadoCuentaItem.create({
-          data: {
-            estadoCuentaId: id,
-            tipo: 'MORA',
-            fecha: aDate(parseISO(fechaPagoReal)),
-            descripcion: 'Intereses por mora',
-            capital: '0.00',
-            dias: r.diasMora,
-            tasaPeriodo: r.tasaMoraPeriodo.toFixed(12),
-            interes: m2(r.interesesMora),
-            subtotal: m2(r.interesesMora),
-          },
-        });
-      }
-      await tx.cuota.updateMany({ where: { estadoCuentaId: id }, data: { estado: 'PAGADA' } });
-      await tx.estadoCuenta.update({ where: { id }, data: { estado: 'PAGADO' } });
-      // Una compra sin cuotas pendientes queda cancelada.
-      const compraIds = [...new Set(estado.cuotas.map((c) => c.compraId))];
-      for (const compraId of compraIds) {
-        const pendientes = await tx.cuota.count({ where: { compraId, estado: 'PENDIENTE' } });
-        if (!pendientes) await tx.compra.update({ where: { id: compraId }, data: { estado: 'CANCELADA' } });
-      }
-    });
-    return this.obtener(a, id);
+    const total = moraHoy.reduce((s, m) => s.plus(m.mora), dec(0));
+    return { ...e, moraHoy: { cuotas: moraHoy, total: m2(total) } };
   }
 }

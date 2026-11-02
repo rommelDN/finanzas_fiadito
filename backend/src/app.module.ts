@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { ComprasModule } from './compras/compras.module';
+import { CronogramaModule } from './cronograma/cronograma.module';
 import { EstadosCuentaModule } from './estados-cuenta/estados-cuenta.module';
 import { PrismaModule } from './common/prisma.service';
 import { ParametrosModule } from './parametros/parametros.module';
@@ -25,6 +26,7 @@ import { TiendasModule } from './tiendas/tiendas.module';
     ProductosModule,
     ClientesModule,
     ComprasModule,
+    CronogramaModule,
     EstadosCuentaModule,
     ResumenModule,
   ],

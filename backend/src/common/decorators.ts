@@ -20,8 +20,6 @@ export interface UsuarioActual {
   rol: Rol;
   /** null para ADMIN_SISTEMA. */
   tiendaId: bigint | null;
-  /** Solo para rol CLIENTE. */
-  clienteId: bigint | null;
 }
 
 export const CurrentUser = createParamDecorator(

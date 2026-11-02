@@ -68,9 +68,6 @@ export class ComprasService {
       else {
         if (p.estado !== 'ACTIVO') errores.push(`El producto ${c} está inactivo`);
         if (!p.permiteCredito) errores.push(`El producto ${c} no se vende al crédito`);
-        if (p.monedaPrecio !== cliente.moneda) {
-          errores.push(`El producto ${c} está en ${p.monedaPrecio} y el cliente opera en ${cliente.moneda}`);
-        }
       }
     }
     const completos = codigos.every((c) => porCodigo.has(c));
@@ -87,7 +84,7 @@ export class ComprasService {
     const disponibleAntes = dec(cliente.limiteCredito.toString()).minus(deuda);
 
     const base = {
-      cliente: { id: cliente.id, nombre: `${cliente.nombres} ${cliente.apellidos}`, moneda: cliente.moneda },
+      cliente: { id: cliente.id, nombre: `${cliente.nombres} ${cliente.apellidos}` },
       fechaHora,
       nCuotas: d.nCuotas,
       maxCuotasPermitidas: maxCuotas,

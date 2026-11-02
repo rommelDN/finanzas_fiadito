@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PartialType } from '@nestjs/mapped-types';
-import { EstadoActivo, Moneda, UnidadMedida } from '@prisma/client';
+import { EstadoActivo, UnidadMedida } from '@prisma/client';
 import {
   IsBoolean,
   IsEnum,
@@ -33,6 +33,7 @@ import { diskStorage } from 'multer';
 import { join } from 'path';
 import { CurrentUser, Roles, UsuarioActual } from '../common/decorators';
 import { ParseBigIntPipe } from '../common/parse-bigint.pipe';
+import { MAX_CUOTAS } from '../parametros/parametros.service';
 import { ProductosService } from './productos.service';
 import { MAX_IMAGEN_BYTES, MIME_IMAGEN, PRODUCTOS_DIR } from './uploads';
 
@@ -50,17 +51,15 @@ class CrearProductoDto {
   @Matches(/^(https?:\/\/\S+|\/uploads\/\S+)$/, { message: 'imagenUrl debe ser una URL http(s) o una ruta /uploads/...' })
   imagenUrl?: string;
 
-  @IsOptional() @IsEnum(Moneda) monedaPrecio?: Moneda;
-
-  @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) @Max(9999999999)
+  @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) @Max(250)
   precioContado: number;
 
   /** Referencial: no entra en los cálculos. */
-  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(9999999999)
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(250)
   precioCredito?: number;
 
   @IsOptional() @IsBoolean() permiteCredito?: boolean;
-  @IsOptional() @IsInt() @Min(1) @Max(36) maxCuotasProducto?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(MAX_CUOTAS) maxCuotasProducto?: number;
   @IsOptional() @IsEnum(EstadoActivo) estado?: EstadoActivo;
 }
 
@@ -70,16 +69,14 @@ class ActualizarProductoDto extends PartialType(CrearProductoDto) {}
 export class ProductosController {
   constructor(private readonly svc: ProductosService) {}
 
-  /** El cliente ve el catálogo activo de su tienda; el administrador ve todo. */
   @Get()
-  @Roles('ADMIN_NEGOCIO', 'CLIENTE')
+  @Roles('ADMIN_NEGOCIO')
   listar(@CurrentUser() u: UsuarioActual, @Query('estado') estado?: string, @Query('q') q?: string) {
-    const filtro = u.rol === 'CLIENTE' ? 'ACTIVO' : Object.values(EstadoActivo).find((e) => e === estado);
-    return this.svc.listar(u.tiendaId!, { estado: filtro, q });
+    return this.svc.listar(u.tiendaId!, { estado: Object.values(EstadoActivo).find((e) => e === estado), q });
   }
 
   @Get(':id')
-  @Roles('ADMIN_NEGOCIO', 'CLIENTE')
+  @Roles('ADMIN_NEGOCIO')
   obtener(@CurrentUser() u: UsuarioActual, @Param('id', ParseBigIntPipe) id: bigint) {
     return this.svc.obtener(u.tiendaId!, id);
   }

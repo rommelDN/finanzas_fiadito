@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { EstadoActivo, Moneda, Prisma, UnidadMedida } from '@prisma/client';
+import { EstadoActivo, Prisma, UnidadMedida } from '@prisma/client';
 import { unlink } from 'fs/promises';
 import { basename, join } from 'path';
 import { PrismaService } from '../common/prisma.service';
@@ -12,7 +12,6 @@ export interface DatosProducto {
   proveedor?: string;
   unidadMedida: UnidadMedida;
   imagenUrl?: string;
-  monedaPrecio?: Moneda;
   precioContado: number;
   precioCredito?: number;
   permiteCredito?: boolean;

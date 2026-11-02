@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { ApiError, api } from '../api';
 import { useAuth } from '../auth';
-import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, Tabla, fd, hoyISO, pct, useCarga } from '../ui';
+import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, Tabla, fd, hoyISO, money, pct, useCarga } from '../ui';
 
-interface Param { id: string; clave: string; moneda: string; valor: string; vigenteDesde: string; vigenteHasta: string | null; vigente: boolean }
+interface Param { id: string; clave: string; valor: string; vigenteDesde: string; vigenteHasta: string | null; vigente: boolean }
+interface Parametros { parametros: Param[]; limites: { limiteMaximoCredito: number; maxCuotas: number } }
 interface Tienda { id: string; ruc: string; razonSocial: string; nombreComercial: string; giroNegocio: string; direccion: string; estado: string }
 
 function DatosTienda() {
@@ -41,9 +42,8 @@ function DatosTienda() {
   );
 }
 
-function Topes({ edita }: { edita: boolean }) {
-  const { datos, cargando, error, recargar } = useCarga(() => api.get<Param[]>('/parametros'), []);
-  const [moneda, setMoneda] = useState('PEN');
+function Reglas({ edita }: { edita: boolean }) {
+  const { datos, cargando, error, recargar } = useCarga(() => api.get<Parametros>('/parametros'), []);
   const [interes, setInteres] = useState('');
   const [mora, setMora] = useState('');
   const [desde, setDesde] = useState(hoyISO());
@@ -52,7 +52,7 @@ function Topes({ edita }: { edita: boolean }) {
   async function fijar(e: FormEvent) {
     e.preventDefault();
     try {
-      await api.put('/parametros/topes', { moneda, topeInteresTEA: Number(interes), topeMoraTEA: mora ? Number(mora) : undefined, vigenteDesde: desde });
+      await api.put('/parametros/topes', { topeInteresTEA: Number(interes), topeMoraTEA: Number(mora), vigenteDesde: desde });
       setMsg({ ok: true, texto: 'Topes registrados.' });
       recargar();
     } catch (err) {
@@ -61,23 +61,26 @@ function Topes({ edita }: { edita: boolean }) {
   }
   if (cargando) return <Cargando />;
   if (error || !datos) return <Errores error={error} />;
-  const topes = datos.filter((p) => p.clave.startsWith('tope'));
-  const globales = datos.filter((p) => !p.clave.startsWith('tope') && p.moneda === 'PEN');
+  const topes = datos.parametros.filter((p) => p.clave.startsWith('tope'));
+  const base = datos.parametros.filter((p) => !p.clave.startsWith('tope'));
   return (
     <>
       <div className="card" style={{ flex: 1 }}>
-        <h2>Base de cálculo</h2>
-        <div className="sub mb20">Convenciones fijas del Anexo A: iguales para todos los grupos.</div>
-        {globales.map((p) => <Kv key={p.id} k={p.clave} v={p.valor} />)}
+        <h2>Reglas de cálculo</h2>
+        <div className="sub mb20">Convenciones fijas del Anexo A. Todo es en soles (S/).</div>
+        {base.map((p) => <Kv key={p.id} k={p.clave} v={p.valor} />)}
+        <div className="b mt16 mb20">Límites de los créditos</div>
+        <Kv k="Crédito máximo por cliente" v={money(datos.limites.limiteMaximoCredito)} />
+        <Kv k="Máximo de cuotas" v={datos.limites.maxCuotas} />
       </div>
       <div className="card" style={{ flex: 2 }}>
-        <h2>Topes de tasas del BCRP</h2>
-        <div className="sub mb20">Máximo de TEA de interés y de mora que se puede pactar. Se validan al registrar un cliente. Se actualizan cuando el BCRP publica una nueva circular.</div>
+        <h2>Topes de tasas (TEA)</h2>
+        <div className="sub mb20">Máxima TEA de interés y de mora que se puede pactar con un cliente. Se validan al registrarlo.</div>
         <Tabla>
-          <thead><tr><th>Parámetro</th><th>Moneda</th><th className="r">Valor (TEA)</th><th>Desde</th><th>Hasta</th><th /></tr></thead>
+          <thead><tr><th>Parámetro</th><th className="r">Valor (TEA)</th><th>Desde</th><th>Hasta</th><th /></tr></thead>
           <tbody>
             {topes.map((p) => (
-              <tr key={p.id}><td>{p.clave === 'topeInteresTEA' ? 'Tope de interés' : 'Tope de mora'}</td><td>{p.moneda}</td><td className="r">{pct(p.valor, 2)}</td><td>{fd(p.vigenteDesde)}</td><td>{fd(p.vigenteHasta)}</td><td>{p.vigente ? <span className="badge ok">Vigente</span> : <span className="badge gray">Histórico</span>}</td></tr>
+              <tr key={p.id}><td>{p.clave === 'topeInteresTEA' ? 'Tope de interés' : 'Tope de mora'}</td><td className="r">{pct(p.valor, 2)}</td><td>{fd(p.vigenteDesde)}</td><td>{fd(p.vigenteHasta)}</td><td>{p.vigente ? <span className="badge ok">Vigente</span> : <span className="badge gray">Histórico</span>}</td></tr>
             ))}
           </tbody>
         </Tabla>
@@ -85,9 +88,8 @@ function Topes({ edita }: { edita: boolean }) {
           <form className="mt16" onSubmit={fijar}>
             <div className="b mb20">Registrar nueva vigencia</div>
             <div className="frow">
-              <Campo label="Moneda" ayuda="Moneda a la que aplica el tope."><select value={moneda} onChange={(e) => setMoneda(e.target.value)}><option>PEN</option><option>USD</option></select></Campo>
-              <Campo label="Tope de interés (% TEA)" ayuda="Máxima TEA de interés compensatorio permitida por el BCRP."><input type="number" step="0.01" min="0.01" value={interes} onChange={(e) => setInteres(e.target.value)} required /></Campo>
-              <Campo label="Tope de mora (% TEA)" ayuda="Máxima TEA moratoria. Si lo dejas vacío se usa el 15 % del tope de interés (Circular BCRP 0008-2021)."><input type="number" step="0.01" min="0.01" value={mora} onChange={(e) => setMora(e.target.value)} /></Campo>
+              <Campo label="Tope de interés (% TEA)" ayuda="Máxima TEA de interés que se podrá pactar con un cliente. Para créditos pequeños de tienda de barrio se usan valores moderados."><input type="number" step="0.01" min="0.01" value={interes} onChange={(e) => setInteres(e.target.value)} required /></Campo>
+              <Campo label="Tope de mora (% TEA)" ayuda="Máxima TEA moratoria que se podrá pactar."><input type="number" step="0.01" min="0.01" value={mora} onChange={(e) => setMora(e.target.value)} required /></Campo>
               <Campo label="Vigente desde" ayuda="Fecha desde la que rige. La vigencia anterior se cierra el día previo."><input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} required /></Campo>
             </div>
             {msg && <div className={`note ${msg.ok ? 'good' : 'err'}`}>{msg.texto}</div>}
@@ -104,10 +106,10 @@ export default function Parametros() {
   const sistema = usuario?.rol === 'ADMIN_SISTEMA';
   return (
     <>
-      <Encabezado ruta="Parámetros" titulo="Parámetros" sub={sistema ? 'Topes de tasas del BCRP y convenciones de cálculo.' : 'Datos de tu tienda y reglas de cálculo vigentes.'} />
+      <Encabezado ruta="Parámetros" titulo="Parámetros" sub={sistema ? 'Topes de tasas y reglas de cálculo.' : 'Datos de tu tienda y reglas de cálculo vigentes.'} />
       <div className="row">
         {!sistema && <DatosTienda />}
-        <Topes edita={sistema} />
+        <Reglas edita={sistema} />
       </div>
     </>
   );

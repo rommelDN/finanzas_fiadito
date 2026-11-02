@@ -23,7 +23,7 @@ export class AuthService {
   }
 
   async login(username: string, password: string, ip?: string) {
-    const u = await this.prisma.usuario.findUnique({ where: { username }, include: { cliente: true } });
+    const u = await this.prisma.usuario.findUnique({ where: { username }});
     const ok = await bcrypt.compare(password, u?.passwordHash ?? HASH_FALSO);
     if (!u || !ok || u.estado !== 'ACTIVO') {
       await this.bitacora.registrar({
@@ -45,7 +45,7 @@ export class AuthService {
     });
     await this.bitacora.registrar({ usuarioId: u.id, accion: 'LOGIN', entidad: 'usuario', entidadId: u.id, ip });
 
-    return { token, usuario: this.aActual(u, u.cliente?.id ?? null) };
+    return { token, usuario: this.aActual(u) };
   }
 
   async logout(token: string, usuarioId: bigint, ip?: string) {
@@ -57,18 +57,17 @@ export class AuthService {
   async validarToken(token: string): Promise<UsuarioActual> {
     const s = await this.prisma.sesion.findUnique({
       where: { tokenHash: sha256(token) },
-      include: { usuario: { include: { cliente: true } } },
+      include: { usuario: true },
     });
     if (!s || s.expiraEn <= new Date() || s.usuario.estado !== 'ACTIVO') {
       throw new UnauthorizedException('Sesión inválida o vencida');
     }
-    return this.aActual(s.usuario, s.usuario.cliente?.id ?? null);
+    return this.aActual(s.usuario);
   }
 
   private aActual(
     u: { id: bigint; username: string; nombre: string; rol: UsuarioActual['rol']; tiendaId: bigint | null },
-    clienteId: bigint | null,
   ): UsuarioActual {
-    return { id: u.id, username: u.username, nombre: u.nombre, rol: u.rol, tiendaId: u.tiendaId, clienteId };
+    return { id: u.id, username: u.username, nombre: u.nombre, rol: u.rol, tiendaId: u.tiendaId };
   }
 }

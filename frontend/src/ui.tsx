@@ -2,10 +2,8 @@ import { DependencyList, ReactNode, useCallback, useEffect, useState } from 'rea
 import { ApiError } from './api';
 
 // ------------------------------------------------------------------ formato
-export const SIMBOLO: Record<string, string> = { PEN: 'S/', USD: 'US$' };
-
-export const money = (x: string | number | null | undefined, moneda = 'PEN') =>
-  `${SIMBOLO[moneda] ?? moneda} ${Number(x ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const money = (x: string | number | null | undefined) =>
+  `S/ ${Number(x ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** "2026-10-26T00:00:00.000Z" → "26/10/2026" (las fechas de la BD son de calendario, sin huso). */
 export const fd = (s?: string | null) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '—');

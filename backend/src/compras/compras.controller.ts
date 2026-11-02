@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
   HttpCode,
   Param,
@@ -73,28 +72,24 @@ export class ComprasController {
     return this.svc.registrar(u.tiendaId!, aEntrada(dto));
   }
 
-  /** Límite, deuda y crédito disponible. El cliente consulta el suyo; el administrador pasa ?clienteId=. */
+  /** Límite, deuda y crédito disponible del cliente (?clienteId=). */
   @Get('credito')
-  @Roles('ADMIN_NEGOCIO', 'CLIENTE')
+  @Roles('ADMIN_NEGOCIO')
   credito(@CurrentUser() u: UsuarioActual, @Query('clienteId') clienteId?: string) {
-    if (u.rol === 'CLIENTE') {
-      if (!u.clienteId) throw new ForbiddenException('La cuenta no está vinculada a un cliente');
-      return this.svc.credito(u.tiendaId!, u.clienteId);
-    }
     if (!clienteId || !/^\d{1,18}$/.test(clienteId)) throw new BadRequestException('Falta clienteId');
     return this.svc.credito(u.tiendaId!, BigInt(clienteId));
   }
 
   @Get()
-  @Roles('ADMIN_NEGOCIO', 'CLIENTE')
+  @Roles('ADMIN_NEGOCIO')
   listar(@CurrentUser() u: UsuarioActual, @Query('clienteId') clienteId?: string) {
     const filtro = clienteId && /^\d{1,18}$/.test(clienteId) ? BigInt(clienteId) : undefined;
-    return this.svc.listar({ tiendaId: u.tiendaId!, clienteId: u.clienteId }, filtro);
+    return this.svc.listar({ tiendaId: u.tiendaId! }, filtro);
   }
 
   @Get(':id')
-  @Roles('ADMIN_NEGOCIO', 'CLIENTE')
+  @Roles('ADMIN_NEGOCIO')
   obtener(@CurrentUser() u: UsuarioActual, @Param('id', ParseBigIntPipe) id: bigint) {
-    return this.svc.obtener({ tiendaId: u.tiendaId!, clienteId: u.clienteId }, id);
+    return this.svc.obtener({ tiendaId: u.tiendaId! }, id);
   }
 }
