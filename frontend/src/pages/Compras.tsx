@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../api';
-import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, Tabla, Vacio, ahoraLocal, fd, fdh, money, pct, useCarga } from '../ui';
+import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, Tabla, Vacio, ahoraLocal, fd, fdh, money, pct, useCarga, CUOTAS_FIJAS, PERIODOS_CUOTA, siglaTasa } from '../ui';
 
 interface ClienteMin { id: string; dni: string; nombres: string; apellidos: string; maxCuotas?: number; estado?: string }
 interface ProductoMin { id: string; codigo: string; descripcion: string; precioContado: string; permiteCredito: boolean; maxCuotasProducto: number; unidadMedida: string }
-interface CompraFila { id: string; clienteId: string; cliente: ClienteMin; fechaHora: string; nCuotas: number; capitalInicial: string; capitalFinanciado: string; tea: string; estado: string }
+interface CompraFila { id: string; clienteId: string; cliente: ClienteMin; fechaHora: string; nCuotas: number; periodoCuota: string; capitalInicial: string; capitalFinanciado: string; tea: string; estado: string }
 interface CuotaFila { numero: number; fechaVencimiento: string; saldoInicial: string; interes: string; amortizacion: string; montoCuota: string; saldoFinal: string; estado?: string }
 interface Detalle extends CompraFila {
   fechaCorteCiclo: string; fechaFinGracia: string; diasGracia: number; interesGracia: string; tem: string; cuotaRegular: string;
@@ -13,7 +13,7 @@ interface Detalle extends CompraFila {
   cuotas: (CuotaFila & { estado: string })[];
 }
 interface Simulacion {
-  valido: boolean; errores: string[]; maxCuotasPermitidas: number; limiteCredito: string; deudaPendiente: string; creditoDisponibleAntes: string;
+  valido: boolean; errores: string[]; maxCuotasPermitidas: number; periodoCuota: string; limiteCredito: string; deudaPendiente: string; creditoDisponibleAntes: string;
   calculo: null | {
     items: { codigoProducto: string; descripcion: string; cantidad: number; precioUnitarioAplicado: string; subtotal: string }[];
     capitalInicial: string; fechaCorteCiclo: string; fechaFinGracia: string; diasGracia: number; interesGracia: string; capitalFinanciado: string;
@@ -43,7 +43,7 @@ function DetalleCompra({ id, onCerrar }: { id: string; onCerrar: () => void }) {
           <Kv k="Días de gracia" v={c.diasGracia} />
           <Kv k="Interés de gracia" v={money(c.interesGracia)} />
           <Kv k="Capital financiado" v={money(c.capitalFinanciado)} grande />
-          <Kv k="TEM" v={pct(Number(c.tem) * 100, 7)} />
+          <Kv k={siglaTasa(c.periodoCuota)} v={pct(Number(c.tem) * 100, 7)} />
           <Kv k="TEA" v={pct(c.tea, 7)} />
           <Kv k="Cuota regular" v={money(c.cuotaRegular)} />
         </div>
@@ -68,7 +68,8 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
   const [clienteId, setClienteId] = useState('');
   const [fechaHora, setFechaHora] = useState(ahoraLocal());
   const [items, setItems] = useState<ItemForm[]>([{ codigo: '', cantidad: '1' }]);
-  const [nCuotas, setNCuotas] = useState('1');
+  const [nCuotas, setNCuotas] = useState(String(CUOTAS_FIJAS));
+  const [periodoCuota, setPeriodoCuota] = useState('MENSUAL');
   const [sim, setSim] = useState<Simulacion | null>(null);
   const [errSim, setErrSim] = useState<string | null>(null);
   const [errReg, setErrReg] = useState<string | null>(null);
@@ -76,7 +77,7 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
 
   const credito = (productos.datos ?? []).filter((p) => p.permiteCredito);
   const completos = items.filter((i) => i.codigo && Number(i.cantidad) > 0);
-  const cuerpo = { clienteId, fechaHora, nCuotas: Number(nCuotas), items: completos.map((i) => ({ codigoProducto: i.codigo, cantidad: Number(i.cantidad) })) };
+  const cuerpo = { clienteId, fechaHora, nCuotas: Number(nCuotas), periodoCuota, items: completos.map((i) => ({ codigoProducto: i.codigo, cantidad: Number(i.cantidad) })) };
   const clave = JSON.stringify(cuerpo);
 
   useEffect(() => {
@@ -119,8 +120,13 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
           <Campo label="Fecha y hora de la compra" ayuda="Momento de la compra (hora de Lima). Si es posterior a la hora de corte del cliente, la compra pasa al ciclo siguiente.">
             <input type="datetime-local" value={fechaHora} onChange={(e) => setFechaHora(e.target.value)} required />
           </Campo>
-          <Campo label="Número de cuotas" ayuda={`Cuotas mensuales. Máximo permitido: el menor entre el límite del cliente y el de cada producto${sim ? ` (aquí: ${sim.maxCuotasPermitidas})` : ''}.`} ancho={150}>
-            <input type="number" min="1" max="36" value={nCuotas} onChange={(e) => setNCuotas(e.target.value)} required />
+          <Campo label="Tipo de tasa efectiva (período de las cuotas)" ayuda="Cada cuánto se paga una cuota y a qué período se convierte la tasa del cliente: diaria (TED), quincenal (TEQ), mensual (TEM), bimestral (TEB), trimestral (TET), cuatrimestral (TEC), semestral (TES) o anual (TEA). Las cuotas vencen cada ese período, contado en días de 30/360." ancho={230}>
+            <select value={periodoCuota} onChange={(e) => setPeriodoCuota(e.target.value)}>
+              {PERIODOS_CUOTA.map((p) => <option key={p.valor} value={p.valor}>{p.texto}</option>)}
+            </select>
+          </Campo>
+          <Campo label="Número de cuotas" ayuda={`Todos los créditos se otorgan en exactamente ${CUOTAS_FIJAS} cuotas (mínimo y máximo).`} ancho={150}>
+            <input type="number" value={CUOTAS_FIJAS} readOnly />
           </Campo>
         </div>
 
@@ -163,7 +169,7 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
                 <Kv k="Días de gracia" v={c.diasGracia} />
                 <Kv k="Interés de gracia" v={money(c.interesGracia)} />
                 <Kv k="Capital financiado" v={money(c.capitalFinanciado)} />
-                <Kv k="TEM" v={pct(c.temPct, 7)} />
+                <Kv k={siglaTasa(sim?.periodoCuota)} v={pct(c.temPct, 7)} />
                 <Kv k="TEA" v={pct(c.teaPct, 7)} />
                 <Kv k="Cuota regular" v={money(c.cuotaRegular)} grande />
                 <Kv k="Total de intereses" v={money(c.totalIntereses)} />

@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Periodo, Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { PrismaService } from '../common/prisma.service';
+import { MAX_CUOTAS, MIN_CUOTAS } from '../parametros/parametros.service';
 import { Fecha, calcularCompra, dec, fechaISO, maxCuotasPermitidas, parseISO } from '../finanzas';
 
 type Db = PrismaService | Prisma.TransactionClient;
@@ -12,6 +13,7 @@ export interface EntradaCompraDto {
   fechaHora?: string;
   items: { codigoProducto: string; cantidad: number }[];
   nCuotas: number;
+  periodoCuota?: string;
 }
 
 const ahoraLima = (): string => new Date(Date.now() - 5 * 3_600_000).toISOString().slice(0, 16);
@@ -53,6 +55,7 @@ export class ComprasService {
     const tienda = await db.tienda.findUnique({ where: { id: tiendaId } });
     if (tienda?.estado !== 'ACTIVA') errores.push('La tienda está dada de baja: no se permiten compras nuevas');
 
+    const periodoCuota = (d.periodoCuota ?? 'MENSUAL') as Periodo;
     const cliente = await db.cliente.findFirst({ where: { id: d.clienteId, tiendaId } });
     if (!cliente) throw new NotFoundException('Cliente no encontrado');
     if (cliente.estado !== 'ACTIVO') errores.push('El cliente está inactivo');
@@ -72,12 +75,15 @@ export class ComprasService {
     }
     const completos = codigos.every((c) => porCodigo.has(c));
 
-    const maxCuotas = maxCuotasPermitidas(
-      cliente.maxCuotas,
-      productos.map((p) => p.maxCuotasProducto),
-    );
-    if (d.nCuotas < 1 || d.nCuotas > maxCuotas) {
-      errores.push(`El número de cuotas debe estar entre 1 y ${maxCuotas} (límite del cliente y de los productos)`);
+    // Número fijo de cuotas (por defecto exactamente 8). Los topes por cliente/producto solo rigen si el rango permite elegir.
+    const rangoFijo = MIN_CUOTAS === MAX_CUOTAS;
+    const maxCuotas = rangoFijo
+      ? MAX_CUOTAS
+      : Math.min(MAX_CUOTAS, maxCuotasPermitidas(cliente.maxCuotas, productos.map((p) => p.maxCuotasProducto)));
+    if (rangoFijo) {
+      if (d.nCuotas !== MAX_CUOTAS) errores.push(`El crédito se otorga en exactamente ${MAX_CUOTAS} cuotas`);
+    } else if (d.nCuotas < MIN_CUOTAS || d.nCuotas > maxCuotas) {
+      errores.push(`El número de cuotas debe estar entre ${MIN_CUOTAS} y ${maxCuotas} (límite del cliente y de los productos)`);
     }
 
     const deuda = await deudaPendiente(db, cliente.id);
@@ -87,6 +93,7 @@ export class ComprasService {
       cliente: { id: cliente.id, nombre: `${cliente.nombres} ${cliente.apellidos}` },
       fechaHora,
       nCuotas: d.nCuotas,
+      periodoCuota,
       maxCuotasPermitidas: maxCuotas,
       limiteCredito: m2(dec(cliente.limiteCredito.toString())),
       deudaPendiente: m2(deuda),
@@ -108,6 +115,7 @@ export class ComprasService {
       hora,
       items: d.items.map((i) => ({ cantidad: i.cantidad, precioContado: porCodigo.get(i.codigoProducto)!.precioContado.toString() })),
       nCuotas: Math.max(d.nCuotas, 1),
+      periodoCuota,
     });
 
     if (calculo.capitalFinanciado.gt(disponibleAntes)) {
@@ -180,6 +188,7 @@ export class ComprasService {
           fechaHora: new Date(`${ev.fechaHora.slice(0, 10)}T${ev.fechaHora.slice(11, 16)}:00Z`),
           capitalInicial: m2(c.capitalInicial),
           nCuotas: d.nCuotas,
+          periodoCuota: (d.periodoCuota ?? 'MENSUAL') as Periodo,
           fechaCorteCiclo: aUTC(c.corte, ev.interno.horaCorte),
           fechaFinGracia: aUTC(c.finGracia),
           diasGracia: c.diasGracia,

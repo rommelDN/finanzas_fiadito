@@ -19,7 +19,7 @@ interface Producto {
 
 const VACIO = {
   codigo: '', descripcion: '', marca: '', proveedor: '', unidadMedida: 'UND', imagenUrl: '',
-  precioContado: '', precioCredito: '', permiteCredito: true, maxCuotasProducto: '6', estado: 'ACTIVO',
+  precioContado: '', precioCredito: '', permiteCredito: true, maxCuotasProducto: '8', estado: 'ACTIVO',
 };
 type Form = typeof VACIO;
 
@@ -123,8 +123,8 @@ export default function Productos() {
             </Campo>
           </div>
           <div className="frow">
-            <Campo label="Máximo de cuotas" ayuda="Tope de cuotas para este producto. Una compra usa el menor entre este valor, el del cliente y el de los demás productos.">
-              <input type="number" min="1" max="12" value={f.maxCuotasProducto} onChange={(e) => set('maxCuotasProducto', e.target.value)} required />
+            <Campo label="Máximo de cuotas" ayuda="Referencial: hoy todos los créditos se otorgan en exactamente 8 cuotas, sin importar este valor.">
+              <input type="number" min="1" max="8" value={f.maxCuotasProducto} onChange={(e) => set('maxCuotasProducto', e.target.value)} required />
             </Campo>
             <Campo label="Estado" ayuda="Un producto INACTIVO no se puede vender. Es la forma de darlo de baja sin perder el historial.">
               <select value={f.estado} onChange={(e) => set('estado', e.target.value)}><option>ACTIVO</option><option>INACTIVO</option></select>

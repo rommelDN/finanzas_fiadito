@@ -35,9 +35,8 @@ export default function Login() {
         </div>
         <div>
           <h2>El cuaderno de fiado, ahora con cuentas claras.</h2>
-          <div>Cada compra al crédito con su cronograma, su estado de cuenta y su pago: sin cálculos a mano.</div>
+          <div>Cada compra al crédito con su cronograma y su pago: sin cálculos a mano.</div>
           <div className="chkl">✓ Cuotas y tasas calculadas por la app</div>
-          <div className="chkl">✓ Estado de cuenta en cada fecha de corte</div>
           <div className="chkl">✓ Varias tiendas en la misma plataforma</div>
         </div>
         <small>SI642 Finanzas e Ingeniería Económica · UPC</small>

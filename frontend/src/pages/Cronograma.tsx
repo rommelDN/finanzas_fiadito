@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../api';
-import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, MEDIOS, Tabla, Vacio, fd, money, pct, useCarga } from '../ui';
+import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, MEDIOS, Tabla, Vacio, fd, money, pct, siglaTasa, useCarga } from '../ui';
 
 interface CompraFila { id: string; clienteId: string; cliente: { id: string; dni: string; nombres: string; apellidos: string }; fechaHora: string; nCuotas: number; capitalInicial: string; estado: string }
 interface CuotaFila {
@@ -12,7 +12,7 @@ interface Cronograma {
   vistaPrevia: boolean; editable: boolean; motivoNoEditable: string | null;
   compra: { id: string; estado: string; fechaHora: string; nCuotas: number; cliente: { id: string; nombre: string; dni: string } };
   proxima: null | { cuotaId: string; numero: number; fechaVencimiento: string; montoCuota: string; diasMoraSugeridos: number };
-  resumen: { capitalInicial: string; diasGracia: number; fechaFinGracia: string; interesGracia: string; capitalFinanciado: string; temPct: string; teaPct: string; cuotaRegular: string; totalIntereses: string; totalProgramado: string };
+  resumen: { periodoCuota: string; capitalInicial: string; diasGracia: number; fechaFinGracia: string; interesGracia: string; capitalFinanciado: string; temPct: string; teaPct: string; cuotaRegular: string; totalIntereses: string; totalProgramado: string };
   cuotas: CuotaFila[];
 }
 interface PagoCalc {
@@ -138,7 +138,7 @@ function Detalle({ id }: { id: string }) {
           <Kv k="Fin de gracia (primer pago un mes después)" v={fd(r.fechaFinGracia)} />
           <Kv k="Interés de la gracia" v={money(r.interesGracia)} />
           <Kv k="Capital financiado" v={money(r.capitalFinanciado)} />
-          <Kv k="TEM / TEA" v={`${pct(r.temPct, 4)} / ${pct(r.teaPct, 4)}`} />
+          <Kv k={`${siglaTasa(r.periodoCuota)} / TEA`} v={`${pct(r.temPct, 4)} / ${pct(r.teaPct, 4)}`} />
           <Kv k="Cuota regular" v={money(r.cuotaRegular)} grande />
           <Kv k="Total de intereses" v={money(r.totalIntereses)} />
           <Kv k="Total a pagar en cuotas" v={money(r.totalProgramado)} />

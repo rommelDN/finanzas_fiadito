@@ -60,16 +60,6 @@ enum EstadoCuota {
   PAGADA
 }
 
-enum EstadoCuentaEstado {
-  PENDIENTE
-  PAGADO
-}
-
-enum TipoItem {
-  CUOTA
-  MORA
-}
-
 enum MedioPago {
   EFECTIVO
   YAPE
@@ -206,7 +196,6 @@ model Cliente {
 
   tienda        Tienda         @relation(fields: [tiendaId], references: [id])
   compras       Compra[]
-  estadosCuenta EstadoCuenta[]
 
   @@unique([tiendaId, dni])
   @@map("cliente")
@@ -219,6 +208,8 @@ model Compra {
   fechaHora         DateTime     @map("fecha_hora")
   capitalInicial    Decimal      @map("capital_inicial") @db.Decimal(12, 2)
   nCuotas           Int          @map("n_cuotas") @db.TinyInt
+  // Período de las cuotas y de la tasa efectiva (TED, TEQ, TEM, TEB, TET, TEC, TES, TEA).
+  periodoCuota      Periodo      @default(MENSUAL) @map("periodo_cuota")
   fechaCorteCiclo   DateTime     @map("fecha_corte_ciclo")
   fechaFinGracia    DateTime     @map("fecha_fin_gracia") @db.Date
   diasGracia        Int          @map("dias_gracia")
@@ -258,7 +249,6 @@ model DetalleCompra {
 model Cuota {
   id               BigInt      @id @default(autoincrement())
   compraId         BigInt      @map("compra_id")
-  estadoCuentaId   BigInt?     @map("estado_cuenta_id")
   numero           Int         @db.TinyInt
   fechaVencimiento DateTime    @map("fecha_vencimiento") @db.Date
   saldoInicial     Decimal     @map("saldo_inicial") @db.Decimal(12, 2)
@@ -269,55 +259,11 @@ model Cuota {
   estado           EstadoCuota @default(PENDIENTE)
 
   compra       Compra             @relation(fields: [compraId], references: [id])
-  estadoCuenta EstadoCuenta?      @relation(fields: [estadoCuentaId], references: [id])
-  items        EstadoCuentaItem[]
   pago         Pago?
 
   @@unique([compraId, numero])
   @@index([estado, fechaVencimiento])
-  @@index([estadoCuentaId])
   @@map("cuota")
-}
-
-/// Estado de cuenta del cliente en una fecha de corte (documento con las cuotas del ciclo).
-model EstadoCuenta {
-  id                   BigInt             @id @default(autoincrement())
-  clienteId            BigInt             @map("cliente_id")
-  fechaCorte           DateTime           @map("fecha_corte") @db.Date
-  fechaPago            DateTime           @map("fecha_pago") @db.Date
-  totalCapital         Decimal            @map("total_capital") @db.Decimal(12, 2)
-  totalInteresesCuotas Decimal            @map("total_intereses_cuotas") @db.Decimal(12, 2)
-  total                Decimal            @db.Decimal(12, 2)
-  // PAGADO cuando todas sus cuotas están pagadas.
-  estado               EstadoCuentaEstado @default(PENDIENTE)
-
-  cliente Cliente            @relation(fields: [clienteId], references: [id])
-  cuotas  Cuota[]
-  items   EstadoCuentaItem[]
-
-  // Evita generar dos veces el estado del mismo corte.
-  @@unique([clienteId, fechaCorte])
-  @@map("estado_cuenta")
-}
-
-model EstadoCuentaItem {
-  id             BigInt   @id @default(autoincrement())
-  estadoCuentaId BigInt   @map("estado_cuenta_id")
-  cuotaId        BigInt?  @map("cuota_id")
-  tipo           TipoItem
-  fecha          DateTime @db.Date
-  descripcion    String   @db.VarChar(150)
-  capital        Decimal  @db.Decimal(12, 2)
-  dias           Int?
-  tasaPeriodo    Decimal? @map("tasa_periodo") @db.Decimal(18, 12)
-  interes        Decimal  @db.Decimal(12, 2)
-  subtotal       Decimal  @db.Decimal(12, 2)
-
-  estadoCuenta EstadoCuenta @relation(fields: [estadoCuentaId], references: [id])
-  cuota        Cuota?       @relation(fields: [cuotaId], references: [id])
-
-  @@index([estadoCuentaId])
-  @@map("estado_cuenta_item")
 }
 
 /// Pago de una cuota (completa, una sola vez). Prelación: mora → interés → capital.

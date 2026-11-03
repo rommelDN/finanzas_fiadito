@@ -31,7 +31,7 @@ describe('Compras al crédito (e2e)', () => {
 
   it('simula CR1 con los valores de la sección 8 sin guardar nada', async () => {
     const r = await simular(cr1()).expect(200);
-    expect(r.body).toMatchObject({ valido: true, errores: [], maxCuotasPermitidas: 6, creditoDisponibleAntes: '1000.00' });
+    expect(r.body).toMatchObject({ valido: true, errores: [], maxCuotasPermitidas: 8, creditoDisponibleAntes: '1000.00' });
     expect(r.body.calculo).toMatchObject({
       capitalInicial: '131.30',
       fechaCorteCiclo: '2026-09-20',
@@ -98,6 +98,20 @@ describe('Compras al crédito (e2e)', () => {
     expect(b.body.calculo.fechaCorteCiclo).toBe('2026-10-20');
   });
 
+  it('el período de las cuotas cambia la tasa efectiva y los vencimientos (TEQ y TES)', async () => {
+    const mensual = (await simular(cr1()).expect(200)).body.calculo;
+    const q = (await simular({ ...cr1(), periodoCuota: 'QUINCENAL' }).expect(200)).body;
+    expect(q.periodoCuota).toBe('QUINCENAL');
+    expect(q.calculo.cuotas).toHaveLength(3);
+    // Rosa: 6.1363551 % bimestral → TEQ = (1+i)^(15/60) − 1
+    expect(Number(q.calculo.temPct)).toBeCloseTo((Math.pow(1.061363551, 15 / 60) - 1) * 100, 5);
+    expect(Number(q.calculo.temPct)).toBeLessThan(Number(mensual.temPct));
+    expect(q.calculo.cuotas[1].fechaVencimiento.slice(0, 10) > q.calculo.cuotas[0].fechaVencimiento.slice(0, 10)).toBe(true);
+    const s = (await simular({ ...cr1(), periodoCuota: 'SEMESTRAL' }).expect(200)).body;
+    expect(Number(s.calculo.temPct)).toBeCloseTo((Math.pow(1.061363551, 180 / 60) - 1) * 100, 5);
+    await simular({ ...cr1(), periodoCuota: 'SEMANAL' }).expect(400);
+  });
+
   describe('rechazos', () => {
     const errores = (r: any) => JSON.stringify(r.body.message ?? r.body.errores);
 
@@ -112,9 +126,8 @@ describe('Compras al crédito (e2e)', () => {
       expect(errores(await registrar(cuerpoCompra(ids.rosa, '2026-09-15T10:30', [['NOEXISTE', 1]], 1)).expect(400))).toMatch(/no existe/);
     });
 
-    it('cuotas por encima del máximo del cliente (Carlos: 4)', async () => {
-      const r = await registrar(cuerpoCompra(ids.carlos, '2026-09-15T10:30', [['P001', 1]], 5)).expect(400);
-      expect(errores(r)).toMatch(/entre 1 y 4/);
+    it('más de 8 cuotas se rechaza (tope general)', async () => {
+      await registrar(cuerpoCompra(ids.carlos, '2026-09-15T10:30', [['P001', 1]], 9)).expect(400);
     });
 
     it('crédito insuficiente: Cg 132.74 > disponible 132.00; con límite justo 132.74 sí se acepta', async () => {

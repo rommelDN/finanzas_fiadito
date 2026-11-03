@@ -59,15 +59,15 @@ async function main() {
 
   // ---- Productos (sección 8) ----
   const productos = [
-    ['P001', 'Arroz extra 5 kg', 'UND', '22.00', '24.00', 6, true, 'ACTIVO'],
-    ['P002', 'Aceite vegetal 1 L', 'LT', '9.50', '10.50', 6, true, 'ACTIVO'],
-    ['P003', 'Leche evaporada 400 g', 'UND', '4.20', '4.60', 6, true, 'ACTIVO'],
-    ['P004', 'Atún en aceite 170 g', 'UND', '5.00', '5.50', 6, true, 'ACTIVO'],
-    ['P005', 'Azúcar rubia 1 kg', 'KG', '3.30', '3.60', 6, true, 'ACTIVO'],
-    ['P006', 'Detergente 2 kg', 'UND', '16.50', '18.00', 6, true, 'ACTIVO'],
+    ['P001', 'Arroz extra 5 kg', 'UND', '22.00', '24.00', 8, true, 'ACTIVO'],
+    ['P002', 'Aceite vegetal 1 L', 'LT', '9.50', '10.50', 8, true, 'ACTIVO'],
+    ['P003', 'Leche evaporada 400 g', 'UND', '4.20', '4.60', 8, true, 'ACTIVO'],
+    ['P004', 'Atún en aceite 170 g', 'UND', '5.00', '5.50', 8, true, 'ACTIVO'],
+    ['P005', 'Azúcar rubia 1 kg', 'KG', '3.30', '3.60', 8, true, 'ACTIVO'],
+    ['P006', 'Detergente 2 kg', 'UND', '16.50', '18.00', 8, true, 'ACTIVO'],
     ['P007', 'Balón de gas 10 kg', 'UND', '50.00', '55.00', 2, true, 'ACTIVO'],
     ['P008', 'Recarga celular S/ 10', 'SERVICIO', '10.00', '10.00', 1, false, 'ACTIVO'],
-    ['P009', 'Fideos spaghetti 500 g', 'UND', '2.80', '3.00', 6, true, 'INACTIVO'],
+    ['P009', 'Fideos spaghetti 500 g', 'UND', '2.80', '3.00', 8, true, 'INACTIVO'],
   ] as const;
   for (const [codigo, descripcion, unidadMedida, contado, credito, maxCuotasProducto, permiteCredito, estado] of productos) {
     await prisma.producto.upsert({
@@ -87,9 +87,9 @@ async function main() {
     tasa: string; per: Periodo; mora: string; perMora: Periodo;
     limite: string; maxCuotas: number; corte: number; pago: number;
   }[] = [
-    { dni: '40000001', nombres: 'Rosa', apellidos: 'Quispe Huamán', tasa: '6.1363551', per: 'BIMESTRAL', mora: '6.1208000', perMora: 'SEMESTRAL', limite: '250.00', maxCuotas: 6, corte: 20, pago: 26 },
-    { dni: '40000002', nombres: 'Carlos', apellidos: 'Mendoza Ríos', tasa: '20.0000000', per: 'SEMESTRAL', mora: '6.0000000', perMora: 'SEMESTRAL', limite: '200.00', maxCuotas: 4, corte: 25, pago: 5 },
-    { dni: '40000003', nombres: 'Mario', apellidos: 'Paredes Salas', tasa: '1.5105456', per: 'QUINCENAL', mora: '0.4007475', perMora: 'QUINCENAL', limite: '150.00', maxCuotas: 4, corte: 20, pago: 26 },
+    { dni: '40000001', nombres: 'Rosa', apellidos: 'Quispe Huamán', tasa: '6.1363551', per: 'BIMESTRAL', mora: '6.1208000', perMora: 'SEMESTRAL', limite: '250.00', maxCuotas: 8, corte: 20, pago: 26 },
+    { dni: '40000002', nombres: 'Carlos', apellidos: 'Mendoza Ríos', tasa: '20.0000000', per: 'SEMESTRAL', mora: '6.0000000', perMora: 'SEMESTRAL', limite: '200.00', maxCuotas: 8, corte: 25, pago: 5 },
+    { dni: '40000003', nombres: 'Mario', apellidos: 'Paredes Salas', tasa: '1.5105456', per: 'QUINCENAL', mora: '0.4007475', perMora: 'QUINCENAL', limite: '150.00', maxCuotas: 8, corte: 20, pago: 26 },
   ];
   for (const c of clientes) {
     await prisma.cliente.upsert({

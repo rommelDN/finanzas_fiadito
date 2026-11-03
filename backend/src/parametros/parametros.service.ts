@@ -5,7 +5,9 @@ import { dec } from '../finanzas';
 
 /** Límites propios de los créditos de tienda de barrio (no se configuran: son del alcance del proyecto). */
 export const LIMITE_MAXIMO_CREDITO = 250;
-export const MAX_CUOTAS = 12;
+/** Las compras tienen un número fijo de cuotas: por defecto exactamente 8 (mínimo y máximo). */
+export const MAX_CUOTAS = Number(process.env.CUOTAS_MAX ?? 8);
+export const MIN_CUOTAS = Number(process.env.CUOTAS_MIN ?? 8);
 
 export interface Topes {
   /** % TEA máxima de interés compensatorio vigente. */

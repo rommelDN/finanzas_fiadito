@@ -167,22 +167,14 @@ describe('Cronograma de pagos (e2e)', () => {
     });
   });
 
-  describe('integración con el estado de cuenta (Mario)', () => {
-    const generar = (fechaCorte: string) =>
-      api().post('/api/estados-cuenta/generar').set(auth('ltorres')).send({ clienteId: ids.mario, fechaCorte });
-
-    it('pagar la cuota 1 de CM1 deja PAGADO el estado de cuenta del 20/09', async () => {
-      const e = await generar('2026-09-20').expect(201);
-      expect(e.body.estado).toBe('PENDIENTE');
+  describe('pagos de Mario', () => {
+    it('pagar la cuota 1 de CM1 deja su pago registrado', async () => {
       await pagar('cm1', { numeroCuota: 1, medioPago: 'EFECTIVO', montoPagado: 35.77, diasMora: 0 }).expect(201);
-      const despues = await api().get(`/api/estados-cuenta/${e.body.id}`).set(auth('ltorres')).expect(200);
-      expect(despues.body.estado).toBe('PAGADO');
-      expect(despues.body.cuotas[0].pago).toMatchObject({ montoTotal: '35.77' });
+      const c = await cron('cm1').expect(200);
+      expect(c.body.cuotas[0].pago).toMatchObject({ montoTotal: '35.77' });
     });
 
-    it('estado del 20/10 (133.91) pagado cuota por cuota con 10 días de mora: mora total 0.36, 134.27', async () => {
-      const e = await generar('2026-10-20').expect(201);
-      expect(e.body.total).toBe('133.91');
+    it('cuota 2 de CM1, 1 de CM2 y 1 de CM3 con 10 días de mora: mora total 0.36, total 134.27', async () => {
       let mora = 0;
       let total = 0;
       for (const [clave, numero] of [['cm1', 2], ['cm2', 1], ['cm3', 1]] as const) {
@@ -190,21 +182,10 @@ describe('Cronograma de pagos (e2e)', () => {
         expect(p.body.numero).toBe(numero);
         mora += Number(p.body.mora);
         total += Number(p.body.totalPagar);
-        const estadoAntes = (await api().get(`/api/estados-cuenta/${e.body.id}`).set(auth('ltorres')).expect(200)).body.estado;
-        expect(estadoAntes).toBe('PENDIENTE');
         await pagar(clave, { numeroCuota: numero, medioPago: 'PLIN', montoPagado: Number(p.body.totalPagar), diasMora: 10 }).expect(201);
       }
       expect(mora.toFixed(2)).toBe('0.36');
       expect(total.toFixed(2)).toBe('134.27');
-
-      const final = await api().get(`/api/estados-cuenta/${e.body.id}`).set(auth('ltorres')).expect(200);
-      expect(final.body.estado).toBe('PAGADO');
-      // La mora quedó como ítems separados "intereses por mora".
-      const items = final.body.items.filter((i: any) => i.tipo === 'MORA');
-      expect(items).toHaveLength(3);
-      expect(items[0]).toMatchObject({ dias: 10 });
-      expect(items.map((i: any) => i.interes).sort()).toEqual(['0.1', '0.12', '0.14']);
-      expect(final.body.moraHoy.cuotas).toHaveLength(0);
     });
 
     it('deuda pendiente 78.79 (108.32 con CM4) y crédito 521.21; CM2 queda CANCELADA y CM1 vigente', async () => {

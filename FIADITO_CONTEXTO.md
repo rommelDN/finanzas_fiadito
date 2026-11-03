@@ -3,13 +3,14 @@
 > ## DECISIONES DE ALCANCE (2026-11-01) — prevalecen sobre el resto de este documento
 > Fiadito es para **créditos pequeños de tiendas de barrio**. No se sobredimensiona:
 > - **Solo soles (PEN).** No hay USD ni selector de moneda.
-> - **Importes pequeños:** límite de crédito por cliente **≤ S/ 250**, producto ≤ S/ 250, hasta **12 cuotas**.
+> - **Importes pequeños:** límite de crédito por cliente **≤ S/ 250**, producto ≤ S/ 250, hasta **8 cuotas**.
 > - **Solo tasa efectiva.** No existe tasa nominal (se ignora todo lo que este documento dice de nominal / `tipoTasa` / `capitalizacion`).
 > - **No existe TCEA**, solo **TEA** (`compra.tea`). Sin comisiones, seguros ni gastos.
 > - **Topes de TEA realistas** (configurables en Parámetros): interés **60 %**, mora **15 %** (referenciales).
 > - **Dos tipos de usuario:** `ADMIN_SISTEMA` y `ADMIN_NEGOCIO` (quien maneja la tienda). **Los clientes no tienen usuario ni acceso**: el administrador de la tienda registra las compras y les entrega el cronograma de pagos.
-> - **Pantallas:** Inicio, Productos, Clientes, Compras, **Cronograma de pagos**, Estado de cuenta, Parámetros (+ Tiendas para el administrador del sistema). No hay pantallas de Pagos, Bitácora ni Cómo funciona (la bitácora se sigue registrando en la BD).
-> - **Cronograma de pagos:** cronograma del método francés por compra, con **días de gracia editables** (recalcula y guarda mientras no se haya pagado ninguna cuota ni exista estado de cuenta), **días de mora** y botón **Pagar** que cobra la próxima cuota completa (mora → interés → capital, sin pagos parciales ni duplicados). El pago es **por cuota**; el estado de cuenta es el documento del corte y pasa a PAGADO cuando todas sus cuotas están pagadas.
+> - **Pantallas:** Inicio, Productos, Clientes, Compras, **Cronograma de pagos**, Parámetros (+ Tiendas para el administrador del sistema). No hay pantallas de Pagos, Bitácora ni Cómo funciona (la bitácora se sigue registrando en la BD).
+> - **Cronograma de pagos:** cronograma del método francés por compra, con **días de gracia editables** (recalcula y guarda mientras no se haya pagado ninguna cuota ), **días de mora** y botón **Pagar** que cobra la próxima cuota completa (mora → interés → capital, sin pagos parciales ni duplicados). El pago es **por cuota**.
+> - **Sin Estado de cuenta (2026-11-02):** se eliminó esa pantalla y su funcionalidad (módulo, tablas `estado_cuenta` y `estado_cuenta_item`, tarea diaria de cortes). Ignorar las secciones de este documento sobre estado de cuenta; el cobro se hace solo desde el cronograma de pagos.
 
 
 > Documento de contexto para Claude Code. Resume el enunciado del curso, el informe del Hito 1 (ya corregido) y las reglas financieras que el código debe cumplir **exactamente**. Ante cualquier duda de cálculo, manda este documento y los datos de prueba de la sección 8.

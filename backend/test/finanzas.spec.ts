@@ -10,6 +10,7 @@ import {
   fechaDMY,
   maxCuotasPermitidas,
   mk,
+  sumarDias,
   Periodo,
   sumarMeses,
 } from '../src/finanzas';
@@ -207,8 +208,46 @@ describe('Cronograma con días de gracia elegidos', () => {
   it('sin gracia no se capitaliza nada y el saldo final es 0', () => {
     const r = calcularConGracia({ capital: '100', ...rosa, fecha: f('31/01/2027'), diasGracia: 0, nCuotas: 3 });
     expect(r.interesGracia.toFixed(2)).toBe('0.00');
-    // El día 31 se conserva: 28/02/2027 y luego 31/03/2027.
-    expect(r.cuotas.map((c) => fechaDMY(c.vencimiento))).toEqual(['28/02/2027', '31/03/2027', '30/04/2027']);
+    // Base 30/360: el 31 cuenta como 30, así que el día pactado es 30 (28/02/2027 por recorte, luego 30/03).
+    expect(r.cuotas.map((c) => fechaDMY(c.vencimiento))).toEqual(['28/02/2027', '30/03/2027', '30/04/2027']);
     expect(r.cuotas[2].saldoFinal.toFixed(2)).toBe('0.00');
+  });
+});
+
+describe('sumarDias en base 30/360', () => {
+  it('un mes son 30 días y un año 360', () => {
+    expect(fechaDMY(sumarDias(mk(2026, 1, 15), 30))).toBe('15/02/2026');
+    expect(fechaDMY(sumarDias(mk(2026, 9, 15), 11))).toBe('26/09/2026');
+    expect(fechaDMY(sumarDias(mk(2026, 3, 10), 360))).toBe('10/03/2027');
+  });
+  it('el día 31 cuenta como 30 y los 30 de febrero se recortan al último día', () => {
+    expect(fechaDMY(sumarDias(mk(2026, 1, 31), 30))).toBe('28/02/2026');
+    expect(fechaDMY(sumarDias(mk(2026, 1, 31), 0))).toBe('30/01/2026');
+    expect(fechaDMY(sumarDias(mk(2026, 12, 20), 15))).toBe('05/01/2027');
+  });
+});
+
+describe('período de las cuotas (TED, TEQ, TEM, TEB, TET, TEC, TES, TEA)', () => {
+  const base = { capital: '100', tasaInteres: '12', periodoTasa: 'ANUAL' as const, fecha: f('15/09/2026'), diasGracia: 0, nCuotas: 8 };
+
+  it('8 cuotas con la tasa efectiva del período elegido y cuota constante', () => {
+    for (const [periodo, dias] of [['DIARIA', 1], ['QUINCENAL', 15], ['MENSUAL', 30], ['BIMESTRAL', 60], ['TRIMESTRAL', 90], ['CUATRIMESTRAL', 120], ['SEMESTRAL', 180], ['ANUAL', 360]] as const) {
+      const r = calcularConGracia({ ...base, periodoCuota: periodo });
+      expect(r.cuotas).toHaveLength(8);
+      // Tasa del período = (1+12%)^(dias/360) − 1
+      expect(r.tem.toNumber()).toBeCloseTo(Math.pow(1.12, dias / 360) - 1, 10);
+      expect(r.cuotas[7].saldoFinal.toFixed(2)).toBe('0.00');
+      // Las cuotas 1 a 7 son iguales (la última absorbe el redondeo).
+      expect(new Set(r.cuotas.slice(0, 7).map((c) => c.monto.toFixed(2))).size).toBe(1);
+    }
+  });
+
+  it('vencimientos cada `dias` días en base 30/360 (mensual conserva el día del mes)', () => {
+    const q = calcularConGracia({ ...base, periodoCuota: 'QUINCENAL' });
+    expect(q.cuotas.slice(0, 3).map((c) => fechaDMY(c.vencimiento))).toEqual(['30/09/2026', '15/10/2026', '30/10/2026']);
+    const s = calcularConGracia({ ...base, periodoCuota: 'SEMESTRAL' });
+    expect(s.cuotas.slice(0, 2).map((c) => fechaDMY(c.vencimiento))).toEqual(['15/03/2027', '15/09/2027']);
+    const m = calcularConGracia({ ...base });
+    expect(m.cuotas[0].vencimiento).toEqual(mk(2026, 10, 15));
   });
 });

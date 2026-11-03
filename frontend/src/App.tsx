@@ -4,7 +4,6 @@ import { Cargando } from './ui';
 import Clientes from './pages/Clientes';
 import Compras from './pages/Compras';
 import Cronograma from './pages/Cronograma';
-import EstadosCuenta from './pages/EstadosCuenta';
 import Inicio from './pages/Inicio';
 import Login from './pages/Login';
 import Parametros from './pages/Parametros';
@@ -24,7 +23,6 @@ const MENU: { ruta: string; texto: string; roles: Rol[] }[] = [
   { ruta: '/clientes', texto: 'Clientes', roles: ['ADMIN_NEGOCIO'] },
   { ruta: '/compras', texto: 'Compras', roles: ['ADMIN_NEGOCIO'] },
   { ruta: '/cronograma', texto: 'Cronograma de pagos', roles: ['ADMIN_NEGOCIO'] },
-  { ruta: '/estados-cuenta', texto: 'Estado de cuenta', roles: ['ADMIN_NEGOCIO'] },
   { ruta: '/parametros', texto: 'Parámetros', roles: ['ADMIN_SISTEMA', 'ADMIN_NEGOCIO'] },
 ];
 
@@ -91,7 +89,6 @@ export default function App() {
         <Route path="clientes" element={<Solo roles={negocio}><Clientes /></Solo>} />
         <Route path="compras" element={<Solo roles={negocio}><Compras /></Solo>} />
         <Route path="cronograma" element={<Solo roles={negocio}><Cronograma /></Solo>} />
-        <Route path="estados-cuenta" element={<Solo roles={negocio}><EstadosCuenta /></Solo>} />
         <Route path="parametros" element={<Solo roles={['ADMIN_SISTEMA', 'ADMIN_NEGOCIO']}><Parametros /></Solo>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

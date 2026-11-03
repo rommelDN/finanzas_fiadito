@@ -14,7 +14,7 @@ interface Resumen { clientes: { id: string; deudaPendiente: string }[] }
 const VACIO = {
   dni: '', nombres: '', apellidos: '', direccion: '', telefono: '',
   tasaInteres: '', periodoTasa: 'MENSUAL', tasaMora: '', periodoTasaMora: 'ANUAL',
-  limiteCredito: '', maxCuotas: '6', diaCorte: '20', horaCorte: '23:59', diaPago: '26',
+  limiteCredito: '', maxCuotas: '8', diaCorte: '20', horaCorte: '23:59', diaPago: '26',
   aceptaPrivacidad: false, estado: 'ACTIVO',
 };
 type Form = typeof VACIO;
@@ -138,12 +138,12 @@ export default function Clientes() {
               <Campo label="Límite de crédito (S/)" ayuda="Máximo que el cliente puede deber en capital, hasta S/ 250 (créditos pequeños). No se aceptan compras que lo excedan.">
                 <input type="number" step="0.01" min="0.01" max="250" value={f.limiteCredito} onChange={(e) => set('limiteCredito', e.target.value)} required />
               </Campo>
-              <Campo label="Máximo de cuotas" ayuda="Número máximo de cuotas mensuales que se le permite al cliente (hasta 12).">
-                <input type="number" min="1" max="12" value={f.maxCuotas} onChange={(e) => set('maxCuotas', e.target.value)} required />
+              <Campo label="Máximo de cuotas" ayuda="Referencial: hoy todos los créditos se otorgan en exactamente 8 cuotas, sin importar este valor.">
+                <input type="number" min="1" max="8" value={f.maxCuotas} onChange={(e) => set('maxCuotas', e.target.value)} required />
               </Campo>
             </div>
             <div className="frow">
-              <Campo label="Día de corte" ayuda="Día del mes en que se cierra el ciclo y se genera su estado de cuenta (1 a 31; si el mes es más corto, el último día).">
+              <Campo label="Día de corte" ayuda="Día del mes en que se cierra el ciclo de facturación: define a qué mes pertenece el vencimiento de cada cuota (1 a 31; si el mes es más corto, el último día).">
                 <input type="number" min="1" max="31" value={f.diaCorte} onChange={(e) => set('diaCorte', e.target.value)} required />
               </Campo>
               <Campo label="Hora de corte" ayuda="Hasta qué hora del día de corte entran las compras al ciclo. Pasada esa hora, la compra va al ciclo siguiente.">

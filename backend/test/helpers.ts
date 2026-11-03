@@ -43,19 +43,14 @@ export async function idsClientes(): Promise<Record<'rosa' | 'carlos' | 'mario',
   return out;
 }
 
-/** Borra compras, cuotas, pagos y estados de cuenta de los clientes del seed. */
+/** Borra compras, cuotas y pagos de los clientes del seed. */
 export async function limpiarCompras() {
   const clientes = await db.cliente.findMany({ where: { dni: { in: Object.values(DNIS) } }, select: { id: true } });
   const clienteId = { in: clientes.map((c) => c.id) };
   const compras = await db.compra.findMany({ where: { clienteId }, select: { id: true } });
   const compraId = { in: compras.map((c) => c.id) };
   const cuotas = await db.cuota.findMany({ where: { compraId }, select: { id: true } });
-  const ecs = await db.estadoCuenta.findMany({ where: { clienteId }, select: { id: true } });
-  const estadoCuentaId = { in: ecs.map((e) => e.id) };
   await db.pago.deleteMany({ where: { cuotaId: { in: cuotas.map((c) => c.id) } } });
-  await db.estadoCuentaItem.deleteMany({ where: { estadoCuentaId } });
-  await db.cuota.updateMany({ where: { compraId }, data: { estadoCuentaId: null } });
-  await db.estadoCuenta.deleteMany({ where: { id: estadoCuentaId } });
   await db.cuota.deleteMany({ where: { compraId } });
   await db.detalleCompra.deleteMany({ where: { compraId } });
   await db.compra.deleteMany({ where: { id: compraId } });

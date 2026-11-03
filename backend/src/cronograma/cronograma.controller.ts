@@ -11,7 +11,7 @@ class GraciaDto {
 
 class PagarDto {
   /** Número de la cuota que se está pagando (debe ser la próxima pendiente). */
-  @IsInt() @Min(1) @Max(36) numeroCuota: number;
+  @IsInt() @Min(1) @Max(8) numeroCuota: number;
 
   @IsEnum(MedioPago) medioPago: MedioPago;
 

@@ -13,6 +13,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -26,7 +27,10 @@ import {
 } from 'class-validator';
 import { CurrentUser, Roles, SinBitacora, UsuarioActual } from '../common/decorators';
 import { ParseBigIntPipe } from '../common/parse-bigint.pipe';
+import { MAX_CUOTAS, MIN_CUOTAS } from '../parametros/parametros.service';
 import { ComprasService, EntradaCompraDto } from './compras.service';
+
+const PERIODOS_CUOTA = ['DIARIA', 'QUINCENAL', 'MENSUAL', 'BIMESTRAL', 'TRIMESTRAL', 'CUATRIMESTRAL', 'SEMESTRAL', 'ANUAL'];
 
 class ItemCompraDto {
   @IsString() @IsNotEmpty() @MaxLength(20)
@@ -47,8 +51,12 @@ class CompraDto {
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => ItemCompraDto)
   items: ItemCompraDto[];
 
-  @IsInt() @Min(1) @Max(36)
+  @IsInt() @Min(MIN_CUOTAS) @Max(MAX_CUOTAS)
   nCuotas: number;
+
+  /** Período de las cuotas y de la tasa efectiva: DIARIA (TED), QUINCENAL (TEQ), MENSUAL (TEM), BIMESTRAL (TEB), TRIMESTRAL (TET), CUATRIMESTRAL (TEC), SEMESTRAL (TES), ANUAL (TEA). */
+  @IsOptional() @IsIn(PERIODOS_CUOTA)
+  periodoCuota?: string;
 }
 
 const aEntrada = (d: CompraDto): EntradaCompraDto => ({ ...d, clienteId: BigInt(d.clienteId) });

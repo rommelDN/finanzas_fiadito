@@ -6,7 +6,6 @@ import { PrismaService } from '../common/prisma.service';
 import { deudaPendiente } from '../compras/compras.service';
 import { calcularConGracia, calcularPago, cmpFecha, dec, dias360, fechaISO, parseISO } from '../finanzas';
 import type { Fecha } from '../finanzas';
-import { refrescarEstado } from '../estados-cuenta/estados-cuenta.service';
 
 const m2 = (x: Decimal) => x.toFixed(2);
 const fechaDe = (d: Date): Fecha => parseISO(d.toISOString());
@@ -29,9 +28,8 @@ export class CronogramaService {
   }
 
   /** La gracia solo se puede cambiar mientras el cronograma no se haya empezado a usar. */
-  private motivoNoEditable(c: { cuotas: { estado: string; estadoCuentaId: bigint | null }[] }): string | null {
+  private motivoNoEditable(c: { cuotas: { estado: string }[] }): string | null {
     if (c.cuotas.some((q) => q.estado === 'PAGADA')) return 'Ya se pagó una cuota: el cronograma no se puede recalcular';
-    if (c.cuotas.some((q) => q.estadoCuentaId)) return 'Las cuotas ya están en un estado de cuenta: el cronograma no se puede recalcular';
     return null;
   }
 
@@ -44,6 +42,7 @@ export class CronogramaService {
       fecha: fechaDe(c.fechaHora),
       diasGracia,
       nCuotas: c.nCuotas,
+      periodoCuota: c.periodoCuota,
     });
   }
 
@@ -96,6 +95,7 @@ export class CronogramaService {
           tasaGracia: r.tasaGracia.toFixed(12),
           interesGracia: m2(r.interesGracia),
           capitalFinanciado: m2(r.capitalFinanciado),
+          periodoCuota: c.periodoCuota,
           temPct: r.tem.times(100).toFixed(7),
           teaPct: r.tea.times(100).toFixed(7),
           cuotaRegular: m2(r.cuotaRegular),
@@ -127,6 +127,7 @@ export class CronogramaService {
         tasaGracia: c.tasaGracia.toString(),
         interesGracia: m2(dec(c.interesGracia.toString())),
         capitalFinanciado: m2(dec(c.capitalFinanciado.toString())),
+        periodoCuota: c.periodoCuota,
         temPct: dec(c.tem.toString()).times(100).toFixed(7),
         teaPct: c.tea.toString(),
         cuotaRegular: m2(dec(c.cuotaRegular.toString())),
@@ -287,24 +288,6 @@ export class CronogramaService {
           },
         });
         await tx.cuota.update({ where: { id: cuota.id }, data: { estado: 'PAGADA' } });
-        // En el estado de cuenta la mora aparece como ítem separado "intereses por mora".
-        if (cuota.estadoCuentaId && r.interesesMora.gt(0)) {
-          await tx.estadoCuentaItem.create({
-            data: {
-              estadoCuentaId: cuota.estadoCuentaId,
-              cuotaId: cuota.id,
-              tipo: 'MORA',
-              fecha: aDate(real),
-              descripcion: `Intereses por mora - compra #${compraId} cuota ${cuota.numero}/${c.nCuotas}`,
-              capital: '0.00',
-              dias: r.diasMora,
-              tasaPeriodo: r.tasaMoraPeriodo.toFixed(12),
-              interes: m2(r.interesesMora),
-              subtotal: m2(r.interesesMora),
-            },
-          });
-        }
-        await refrescarEstado(tx, cuota.estadoCuentaId);
         if (!c.cuotas.some((q) => q.estado === 'PENDIENTE' && q.id !== cuota.id)) {
           await tx.compra.update({ where: { id: compraId }, data: { estado: 'CANCELADA' } });
         }

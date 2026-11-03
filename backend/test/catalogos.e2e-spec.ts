@@ -114,7 +114,7 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
       await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', precioContado: 0 }).expect(400);
       await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', precioContado: 1.234 }).expect(400);
       await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', precioContado: 251 }).expect(400);
-      await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', maxCuotasProducto: 13 }).expect(400);
+      await api().post('/api/productos').set(auth('ltorres')).send({ ...prod, codigo: 'X', maxCuotasProducto: 9 }).expect(400);
       await api().post('/api/productos').set(auth('admin')).send({ ...prod, codigo: 'X' }).expect(403);
     });
 
@@ -173,11 +173,11 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
       expect(JSON.stringify(m.body.message)).toMatch(/TEA de mora.*supera el tope/);
     });
 
-    it('el límite de crédito no puede pasar de S/ 250 ni las cuotas de 12', async () => {
+    it('el límite de crédito no puede pasar de S/ 250 ni las cuotas de 8', async () => {
       const r = await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000002', { limiteCredito: 251 })).expect(400);
       expect(JSON.stringify(r.body.message)).toMatch(/no puede superar S\/ 250/);
       await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000002', { limiteCredito: 250 })).expect(201);
-      await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000003', { maxCuotas: 13 })).expect(400);
+      await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000003', { maxCuotas: 9 })).expect(400);
     });
 
     it('exige aceptar la privacidad, DNI válido y ser administrador de negocio', async () => {
@@ -255,7 +255,7 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
       const r = await api().get('/api/parametros/topes').set(auth('ltorres')).expect(200);
       expect(r.body).toEqual({ topeInteresTEA: '60', topeMoraTEA: '15' });
       const p = await api().get('/api/parametros').set(auth('admin')).expect(200);
-      expect(p.body.limites).toEqual({ limiteMaximoCredito: 250, maxCuotas: 12 });
+      expect(p.body.limites).toEqual({ limiteMaximoCredito: 250, maxCuotas: 8 });
       expect(JSON.stringify(p.body)).not.toMatch(/USD|moneda/);
     });
 

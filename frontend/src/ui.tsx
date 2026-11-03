@@ -139,3 +139,17 @@ export function Tabla({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/** Período de las cuotas y tasa efectiva que se aplica a cada una. */
+export const PERIODOS_CUOTA: { valor: string; sigla: string; texto: string }[] = [
+  { valor: 'DIARIA', sigla: 'TED', texto: 'Diaria (TED)' },
+  { valor: 'QUINCENAL', sigla: 'TEQ', texto: 'Quincenal (TEQ)' },
+  { valor: 'MENSUAL', sigla: 'TEM', texto: 'Mensual (TEM)' },
+  { valor: 'BIMESTRAL', sigla: 'TEB', texto: 'Bimestral (TEB)' },
+  { valor: 'TRIMESTRAL', sigla: 'TET', texto: 'Trimestral (TET)' },
+  { valor: 'CUATRIMESTRAL', sigla: 'TEC', texto: 'Cuatrimestral (TEC)' },
+  { valor: 'SEMESTRAL', sigla: 'TES', texto: 'Semestral (TES)' },
+  { valor: 'ANUAL', sigla: 'TEA', texto: 'Anual (TEA)' },
+];
+export const siglaTasa = (periodo?: string) => PERIODOS_CUOTA.find((p) => p.valor === periodo)?.sigla ?? 'TEM';
+export const CUOTAS_FIJAS = 8;
