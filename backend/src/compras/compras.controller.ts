@@ -27,7 +27,7 @@ import {
 } from 'class-validator';
 import { CurrentUser, Roles, SinBitacora, UsuarioActual } from '../common/decorators';
 import { ParseBigIntPipe } from '../common/parse-bigint.pipe';
-import { MAX_CUOTAS, MIN_CUOTAS } from '../parametros/parametros.service';
+import { MAX_CUOTAS, MAX_CUOTAS_GRACIA, MIN_CUOTAS } from '../parametros/parametros.service';
 import { ComprasService, EntradaCompraDto } from './compras.service';
 
 const PERIODOS_CUOTA = ['DIARIA', 'QUINCENAL', 'MENSUAL', 'BIMESTRAL', 'TRIMESTRAL', 'CUATRIMESTRAL', 'SEMESTRAL', 'ANUAL'];
@@ -57,6 +57,10 @@ class CompraDto {
   /** Período de las cuotas y de la tasa efectiva: DIARIA (TED), QUINCENAL (TEQ), MENSUAL (TEM), BIMESTRAL (TEB), TRIMESTRAL (TET), CUATRIMESTRAL (TEC), SEMESTRAL (TES), ANUAL (TEA). */
   @IsOptional() @IsIn(PERIODOS_CUOTA)
   periodoCuota?: string;
+
+  /** Cuotas de gracia al inicio (no se paga, el interés se capitaliza). Cuentan dentro de las 8. */
+  @IsOptional() @IsInt() @Min(0) @Max(MAX_CUOTAS_GRACIA)
+  cuotasGracia?: number;
 }
 
 const aEntrada = (d: CompraDto): EntradaCompraDto => ({ ...d, clienteId: BigInt(d.clienteId) });

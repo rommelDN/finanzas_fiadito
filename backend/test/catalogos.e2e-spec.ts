@@ -226,7 +226,7 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
       const compra = await db.compra.create({
         data: {
           tiendaId: rosa.tiendaId, clienteId: rosa.id, fechaHora: new Date(), capitalInicial: 10, nCuotas: 1,
-          fechaCorteCiclo: new Date(), fechaFinGracia: new Date(), diasGracia: 0, tasaGracia: 0, interesGracia: 0,
+          interesGracia: 0,
           capitalFinanciado: 10, tem: 0.01, cuotaRegular: 10, tea: 10,
         },
       });

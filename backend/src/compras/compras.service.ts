@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Periodo, Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { PrismaService } from '../common/prisma.service';
-import { MAX_CUOTAS, MIN_CUOTAS } from '../parametros/parametros.service';
+import { MAX_CUOTAS, MAX_CUOTAS_GRACIA, MIN_CUOTAS } from '../parametros/parametros.service';
 import { Fecha, calcularCompra, dec, fechaISO, maxCuotasPermitidas, parseISO } from '../finanzas';
 
 type Db = PrismaService | Prisma.TransactionClient;
@@ -14,6 +14,7 @@ export interface EntradaCompraDto {
   items: { codigoProducto: string; cantidad: number }[];
   nCuotas: number;
   periodoCuota?: string;
+  cuotasGracia?: number;
 }
 
 const ahoraLima = (): string => new Date(Date.now() - 5 * 3_600_000).toISOString().slice(0, 16);
@@ -56,6 +57,9 @@ export class ComprasService {
     if (tienda?.estado !== 'ACTIVA') errores.push('La tienda está dada de baja: no se permiten compras nuevas');
 
     const periodoCuota = (d.periodoCuota ?? 'MENSUAL') as Periodo;
+    const cuotasGracia = d.cuotasGracia ?? 0;
+    const graciaValida = Number.isInteger(cuotasGracia) && cuotasGracia >= 0 && cuotasGracia <= MAX_CUOTAS_GRACIA && cuotasGracia < Math.max(d.nCuotas, 1);
+    if (!graciaValida) errores.push(`Las cuotas de gracia deben ser un entero entre 0 y ${Math.min(MAX_CUOTAS_GRACIA, Math.max(d.nCuotas, 1) - 1)}`);
     const cliente = await db.cliente.findFirst({ where: { id: d.clienteId, tiendaId } });
     if (!cliente) throw new NotFoundException('Cliente no encontrado');
     if (cliente.estado !== 'ACTIVO') errores.push('El cliente está inactivo');
@@ -102,19 +106,16 @@ export class ComprasService {
     if (!completos || d.nCuotas < 1) return { valido: false, errores, ...base, calculo: null, interno: null };
 
     // --- Cálculo financiero (precio de contado vigente al momento de la compra) ---
-    const [fecha, hora] = [parseISO(fechaHora), fechaHora.slice(11, 16)];
+    const fecha = parseISO(fechaHora);
     const calculo = calcularCompra({
       cliente: {
         tasaInteres: cliente.tasaInteres.toString(),
         periodoTasa: cliente.periodoTasa,
-        diaCorte: cliente.diaCorte,
-        horaCorte: horaHHmm(cliente.horaCorte),
-        diaPago: cliente.diaPago,
       },
       fecha,
-      hora,
       items: d.items.map((i) => ({ cantidad: i.cantidad, precioContado: porCodigo.get(i.codigoProducto)!.precioContado.toString() })),
       nCuotas: Math.max(d.nCuotas, 1),
+      cuotasGracia: graciaValida ? cuotasGracia : 0,
       periodoCuota,
     });
 
@@ -140,10 +141,7 @@ export class ComprasService {
           };
         }),
         capitalInicial: m2(calculo.capitalInicial),
-        fechaCorteCiclo: fechaISO(calculo.corte),
-        fechaFinGracia: fechaISO(calculo.finGracia),
-        diasGracia: calculo.diasGracia,
-        tasaGracia: calculo.tasaGracia.toFixed(12),
+        cuotasGracia: calculo.cuotasGracia,
         interesGracia: m2(calculo.interesGracia),
         capitalFinanciado: m2(calculo.capitalFinanciado),
         tem: calculo.tem.toFixed(12),
@@ -158,13 +156,14 @@ export class ComprasService {
           amortizacion: m2(c.amortizacion),
           montoCuota: m2(c.monto),
           saldoFinal: m2(c.saldoFinal),
+          gracia: c.gracia,
         })),
         totalIntereses: m2(calculo.totalIntereses),
         totalProgramado: m2(calculo.totalProgramado),
         creditoDisponibleDespues: m2(disponibleAntes.minus(calculo.capitalFinanciado)),
       },
     };
-    return { ...respuesta, interno: { calculo, cliente, porCodigo, horaCorte: horaHHmm(cliente.horaCorte) } };
+    return { ...respuesta, interno: { calculo, cliente, porCodigo } };
   }
 
   /** Simulación en vivo para el formulario "Nueva compra al crédito": no guarda nada. */
@@ -189,10 +188,7 @@ export class ComprasService {
           capitalInicial: m2(c.capitalInicial),
           nCuotas: d.nCuotas,
           periodoCuota: (d.periodoCuota ?? 'MENSUAL') as Periodo,
-          fechaCorteCiclo: aUTC(c.corte, ev.interno.horaCorte),
-          fechaFinGracia: aUTC(c.finGracia),
-          diasGracia: c.diasGracia,
-          tasaGracia: c.tasaGracia.toFixed(12),
+          cuotasGracia: c.cuotasGracia,
           interesGracia: m2(c.interesGracia),
           capitalFinanciado: m2(c.capitalFinanciado),
           tem: c.tem.toFixed(12),
@@ -218,6 +214,7 @@ export class ComprasService {
               amortizacion: m2(q.amortizacion),
               montoCuota: m2(q.monto),
               saldoFinal: m2(q.saldoFinal),
+              estado: q.gracia ? 'GRACIA' : 'PENDIENTE' as const,
             })),
           },
         },

@@ -6,9 +6,9 @@ import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, Tabla, Vacio, ahora
 interface ClienteMin { id: string; dni: string; nombres: string; apellidos: string; maxCuotas?: number; estado?: string }
 interface ProductoMin { id: string; codigo: string; descripcion: string; precioContado: string; permiteCredito: boolean; maxCuotasProducto: number; unidadMedida: string }
 interface CompraFila { id: string; clienteId: string; cliente: ClienteMin; fechaHora: string; nCuotas: number; periodoCuota: string; capitalInicial: string; capitalFinanciado: string; tea: string; estado: string }
-interface CuotaFila { numero: number; fechaVencimiento: string; saldoInicial: string; interes: string; amortizacion: string; montoCuota: string; saldoFinal: string; estado?: string }
+interface CuotaFila { gracia?: boolean; numero: number; fechaVencimiento: string; saldoInicial: string; interes: string; amortizacion: string; montoCuota: string; saldoFinal: string; estado?: string }
 interface Detalle extends CompraFila {
-  fechaCorteCiclo: string; fechaFinGracia: string; diasGracia: number; interesGracia: string; tem: string; cuotaRegular: string;
+  cuotasGracia: number; interesGracia: string; tem: string; cuotaRegular: string;
   detalles: { id: string; cantidad: string; precioUnitarioAplicado: string; subtotal: string; producto: { codigo: string; descripcion: string; unidadMedida: string } }[];
   cuotas: (CuotaFila & { estado: string })[];
 }
@@ -16,7 +16,7 @@ interface Simulacion {
   valido: boolean; errores: string[]; maxCuotasPermitidas: number; periodoCuota: string; limiteCredito: string; deudaPendiente: string; creditoDisponibleAntes: string;
   calculo: null | {
     items: { codigoProducto: string; descripcion: string; cantidad: number; precioUnitarioAplicado: string; subtotal: string }[];
-    capitalInicial: string; fechaCorteCiclo: string; fechaFinGracia: string; diasGracia: number; interesGracia: string; capitalFinanciado: string;
+    capitalInicial: string; cuotasGracia: number; interesGracia: string; capitalFinanciado: string;
     temPct: string; teaPct: string; cuotaRegular: string; cuotas: CuotaFila[]; totalIntereses: string; totalProgramado: string; creditoDisponibleDespues: string;
   };
 }
@@ -38,10 +38,8 @@ function DetalleCompra({ id, onCerrar }: { id: string; onCerrar: () => void }) {
       <div className="row">
         <div>
           <Kv k="Capital (precio contado)" v={money(c.capitalInicial)} />
-          <Kv k="Corte del ciclo" v={dmy(c.fechaCorteCiclo)} />
-          <Kv k="Fin de gracia (fecha de pago)" v={dmy(c.fechaFinGracia)} />
-          <Kv k="Días de gracia" v={c.diasGracia} />
-          <Kv k="Interés de gracia" v={money(c.interesGracia)} />
+          <Kv k="Cuotas de gracia" v={c.cuotasGracia} />
+          <Kv k="Interés capitalizado en la gracia" v={money(c.interesGracia)} />
           <Kv k="Capital financiado" v={money(c.capitalFinanciado)} grande />
           <Kv k={siglaTasa(c.periodoCuota)} v={pct(Number(c.tem) * 100, 7)} />
           <Kv k="TEA" v={pct(c.tea, 7)} />
@@ -69,6 +67,7 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
   const [fechaHora, setFechaHora] = useState(ahoraLocal());
   const [items, setItems] = useState<ItemForm[]>([{ codigo: '', cantidad: '1' }]);
   const [nCuotas, setNCuotas] = useState(String(CUOTAS_FIJAS));
+  const [cuotasGracia, setCuotasGracia] = useState('0');
   const [periodoCuota, setPeriodoCuota] = useState('MENSUAL');
   const [sim, setSim] = useState<Simulacion | null>(null);
   const [errSim, setErrSim] = useState<string | null>(null);
@@ -77,7 +76,7 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
 
   const credito = (productos.datos ?? []).filter((p) => p.permiteCredito);
   const completos = items.filter((i) => i.codigo && Number(i.cantidad) > 0);
-  const cuerpo = { clienteId, fechaHora, nCuotas: Number(nCuotas), periodoCuota, items: completos.map((i) => ({ codigoProducto: i.codigo, cantidad: Number(i.cantidad) })) };
+  const cuerpo = { clienteId, fechaHora, nCuotas: Number(nCuotas), periodoCuota, cuotasGracia: Number(cuotasGracia), items: completos.map((i) => ({ codigoProducto: i.codigo, cantidad: Number(i.cantidad) })) };
   const clave = JSON.stringify(cuerpo);
 
   useEffect(() => {
@@ -128,6 +127,11 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
           <Campo label="Número de cuotas" ayuda={`Todos los créditos se otorgan en exactamente ${CUOTAS_FIJAS} cuotas (mínimo y máximo).`} ancho={150}>
             <input type="number" value={CUOTAS_FIJAS} readOnly />
           </Campo>
+          <Campo label="Cuotas de gracia" ayuda="Cuotas al inicio en las que no se paga nada: el interés de cada una se suma (capitaliza) al saldo y ese total es el saldo inicial de la cuota siguiente. Cuentan dentro de las 8 cuotas; las restantes amortizan el saldo con cuota constante. De 0 a 3." ancho={150}>
+            <select value={cuotasGracia} onChange={(e) => setCuotasGracia(e.target.value)}>
+              {[0, 1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </Campo>
         </div>
 
         <div className="b" style={{ margin: '4px 0 8px' }}>Productos</div>
@@ -164,10 +168,8 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
             {c && (
               <>
                 <Kv k="Capital (contado)" v={money(c.capitalInicial)} />
-                <Kv k="Corte del ciclo" v={dmy(c.fechaCorteCiclo)} />
-                <Kv k="Fecha de pago (fin de gracia)" v={dmy(c.fechaFinGracia)} />
-                <Kv k="Días de gracia" v={c.diasGracia} />
-                <Kv k="Interés de gracia" v={money(c.interesGracia)} />
+                <Kv k="Cuotas de gracia" v={c.cuotasGracia} />
+                <Kv k="Interés capitalizado en la gracia" v={money(c.interesGracia)} />
                 <Kv k="Capital financiado" v={money(c.capitalFinanciado)} />
                 <Kv k={siglaTasa(sim?.periodoCuota)} v={pct(c.temPct, 7)} />
                 <Kv k="TEA" v={pct(c.teaPct, 7)} />
@@ -177,7 +179,7 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
                 <div className="b mt16 sm">Cronograma</div>
                 <Tabla>
                   <thead><tr><th>N°</th><th>Vence</th><th className="r">Importe</th></tr></thead>
-                  <tbody>{c.cuotas.map((q) => <tr key={q.numero}><td>{q.numero}</td><td>{dmy(q.fechaVencimiento)}</td><td className="r">{money(q.montoCuota)}</td></tr>)}</tbody>
+                  <tbody>{c.cuotas.map((q) => <tr key={q.numero}><td>{q.numero}</td><td>{dmy(q.fechaVencimiento)}</td><td className="r">{q.gracia ? 'Gracia' : money(q.montoCuota)}</td></tr>)}</tbody>
                 </Tabla>
               </>
             )}

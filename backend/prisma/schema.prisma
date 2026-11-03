@@ -58,6 +58,8 @@ enum EstadoCompra {
 enum EstadoCuota {
   PENDIENTE
   PAGADA
+  // Cuota de gracia: no se paga y su interés se capitaliza.
+  GRACIA
 }
 
 enum MedioPago {
@@ -210,10 +212,8 @@ model Compra {
   nCuotas           Int          @map("n_cuotas") @db.TinyInt
   // Período de las cuotas y de la tasa efectiva (TED, TEQ, TEM, TEB, TET, TEC, TES, TEA).
   periodoCuota      Periodo      @default(MENSUAL) @map("periodo_cuota")
-  fechaCorteCiclo   DateTime     @map("fecha_corte_ciclo")
-  fechaFinGracia    DateTime     @map("fecha_fin_gracia") @db.Date
-  diasGracia        Int          @map("dias_gracia")
-  tasaGracia        Decimal      @map("tasa_gracia") @db.Decimal(18, 12)
+  // Cuotas de gracia al inicio (dentro de nCuotas): no se paga y el interés se capitaliza.
+  cuotasGracia      Int          @default(0) @map("cuotas_gracia") @db.TinyInt
   interesGracia     Decimal      @map("interes_gracia") @db.Decimal(12, 2)
   capitalFinanciado Decimal      @map("capital_financiado") @db.Decimal(12, 2)
   tem               Decimal      @db.Decimal(18, 12)

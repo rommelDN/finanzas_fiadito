@@ -2,9 +2,10 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { MedioPago } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { hoyLimaISO, fechaISOValida } from '../common/lima';
+import { MAX_CUOTAS_GRACIA } from '../parametros/parametros.service';
 import { PrismaService } from '../common/prisma.service';
 import { deudaPendiente } from '../compras/compras.service';
-import { calcularConGracia, calcularPago, cmpFecha, dec, dias360, fechaISO, parseISO } from '../finanzas';
+import { calcularCronograma, calcularPago, cmpFecha, dec, dias360, fechaISO, parseISO } from '../finanzas';
 import type { Fecha } from '../finanzas';
 
 const m2 = (x: Decimal) => x.toFixed(2);
@@ -33,28 +34,29 @@ export class CronogramaService {
     return null;
   }
 
-  /** Cronograma francés de la compra con otros días de gracia (sin guardar). */
-  private recalcular(c: Awaited<ReturnType<CronogramaService['cargar']>>, diasGracia: number) {
-    return calcularConGracia({
+  /** Cronograma francés de la compra con otras cuotas de gracia (sin guardar). */
+  private recalcular(c: Awaited<ReturnType<CronogramaService['cargar']>>, cuotasGracia: number) {
+    return calcularCronograma({
       capital: c.capitalInicial.toString(),
       tasaInteres: c.cliente.tasaInteres.toString(),
       periodoTasa: c.cliente.periodoTasa,
       fecha: fechaDe(c.fechaHora),
-      diasGracia,
+      cuotasGracia,
       nCuotas: c.nCuotas,
       periodoCuota: c.periodoCuota,
     });
   }
 
-  private validarGracia(dias: number) {
-    if (!Number.isInteger(dias) || dias < 0 || dias > 90) throw new BadRequestException('Los días de gracia deben ser un entero entre 0 y 90');
+  private validarGracia(cuotas: number, nCuotas: number) {
+    const max = Math.min(MAX_CUOTAS_GRACIA, nCuotas - 1);
+    if (!Number.isInteger(cuotas) || cuotas < 0 || cuotas > max) throw new BadRequestException(`Las cuotas de gracia deben ser un entero entre 0 y ${max}`);
   }
 
   /**
-   * Cronograma de pagos de una compra. Con `diasGracia` distinto del guardado devuelve una vista previa
-   * (lo que pasaría con esa gracia) sin modificar nada.
+   * Cronograma de pagos de una compra. Con `cuotasGracia` distinto del guardado devuelve una vista previa
+   * (lo que pasaría con esas cuotas de gracia) sin modificar nada.
    */
-  async obtener(tiendaId: bigint, compraId: bigint, diasGracia?: number) {
+  async obtener(tiendaId: bigint, compraId: bigint, cuotasGracia?: number) {
     const c = await this.cargar(tiendaId, compraId);
     const motivo = this.motivoNoEditable(c);
     const proxima = c.cuotas.find((q) => q.estado === 'PENDIENTE');
@@ -66,8 +68,8 @@ export class CronogramaService {
         estado: c.estado,
         fechaHora: c.fechaHora,
         nCuotas: c.nCuotas,
+        cuotasGracia: c.cuotasGracia,
         cliente: { id: c.cliente.id, nombre: `${c.cliente.nombres} ${c.cliente.apellidos}`, dni: c.cliente.dni },
-        fechaCorteCiclo: c.fechaCorteCiclo,
       },
       editable: !motivo,
       motivoNoEditable: motivo,
@@ -82,17 +84,15 @@ export class CronogramaService {
         : null,
     };
 
-    if (diasGracia !== undefined && diasGracia !== c.diasGracia) {
-      this.validarGracia(diasGracia);
-      const r = this.recalcular(c, diasGracia);
+    if (cuotasGracia !== undefined && cuotasGracia !== c.cuotasGracia) {
+      this.validarGracia(cuotasGracia, c.nCuotas);
+      const r = this.recalcular(c, cuotasGracia);
       return {
         ...base,
         vistaPrevia: true,
         resumen: {
           capitalInicial: m2(r.capitalInicial),
-          diasGracia: r.diasGracia,
-          fechaFinGracia: fechaISO(r.finGracia),
-          tasaGracia: r.tasaGracia.toFixed(12),
+          cuotasGracia: r.cuotasGracia,
           interesGracia: m2(r.interesGracia),
           capitalFinanciado: m2(r.capitalFinanciado),
           periodoCuota: c.periodoCuota,
@@ -110,7 +110,7 @@ export class CronogramaService {
           amortizacion: m2(q.amortizacion),
           montoCuota: m2(q.monto),
           saldoFinal: m2(q.saldoFinal),
-          estado: 'PENDIENTE' as const,
+          estado: q.gracia ? ('GRACIA' as const) : ('PENDIENTE' as const),
           pago: null,
         })),
       };
@@ -122,9 +122,7 @@ export class CronogramaService {
       vistaPrevia: false,
       resumen: {
         capitalInicial: m2(dec(c.capitalInicial.toString())),
-        diasGracia: c.diasGracia,
-        fechaFinGracia: fechaISO(fechaDe(c.fechaFinGracia)),
-        tasaGracia: c.tasaGracia.toString(),
+        cuotasGracia: c.cuotasGracia,
         interesGracia: m2(dec(c.interesGracia.toString())),
         capitalFinanciado: m2(dec(c.capitalFinanciado.toString())),
         periodoCuota: c.periodoCuota,
@@ -155,8 +153,7 @@ export class CronogramaService {
   }
 
   /** Guarda los días de gracia y recalcula el cronograma (si aún no se usó). */
-  async cambiarGracia(tiendaId: bigint, compraId: bigint, diasGracia: number) {
-    this.validarGracia(diasGracia);
+  async cambiarGracia(tiendaId: bigint, compraId: bigint, cuotasGracia: number) {
     await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM compra WHERE id = ${compraId} AND tienda_id = ${tiendaId} FOR UPDATE`;
       const c = await tx.compra.findFirst({
@@ -166,23 +163,22 @@ export class CronogramaService {
       if (!c) throw new NotFoundException('Compra no encontrada');
       const motivo = this.motivoNoEditable(c);
       if (motivo) throw new ConflictException(motivo);
-      if (diasGracia === c.diasGracia) return;
+      this.validarGracia(cuotasGracia, c.nCuotas);
+      if (cuotasGracia === c.cuotasGracia) return;
 
-      const r = this.recalcular(c as any, diasGracia);
+      const r = this.recalcular(c as any, cuotasGracia);
       // El capital financiado crece con la gracia: no puede pasarse del límite del cliente.
       const deudaOtras = (await deudaPendiente(tx, c.clienteId)).minus(c.capitalFinanciado.toString());
       const disponible = dec(c.cliente.limiteCredito.toString()).minus(deudaOtras);
       if (r.capitalFinanciado.gt(disponible)) {
         throw new BadRequestException(
-          `Con ${diasGracia} días de gracia el capital financiado (${m2(r.capitalFinanciado)}) excede el crédito disponible (${m2(disponible)})`,
+          `Con ${cuotasGracia} cuotas de gracia el capital financiado (${m2(r.capitalFinanciado)}) excede el crédito disponible (${m2(disponible)})`,
         );
       }
       await tx.compra.update({
         where: { id: compraId },
         data: {
-          diasGracia,
-          fechaFinGracia: aDate(r.finGracia),
-          tasaGracia: r.tasaGracia.toFixed(12),
+          cuotasGracia,
           interesGracia: m2(r.interesGracia),
           capitalFinanciado: m2(r.capitalFinanciado),
           cuotaRegular: m2(r.cuotaRegular),
@@ -198,6 +194,7 @@ export class CronogramaService {
             amortizacion: m2(q.amortizacion),
             montoCuota: m2(q.monto),
             saldoFinal: m2(q.saldoFinal),
+            estado: q.gracia ? 'GRACIA' : 'PENDIENTE',
           },
         });
       }

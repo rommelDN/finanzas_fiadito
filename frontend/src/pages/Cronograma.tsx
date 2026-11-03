@@ -5,14 +5,14 @@ import { Campo, Cargando, Encabezado, Errores, Insignia, Kv, MEDIOS, Tabla, Vaci
 
 interface CompraFila { id: string; clienteId: string; cliente: { id: string; dni: string; nombres: string; apellidos: string }; fechaHora: string; nCuotas: number; capitalInicial: string; estado: string }
 interface CuotaFila {
-  numero: number; fechaVencimiento: string; saldoInicial: string; interes: string; amortizacion: string; montoCuota: string; saldoFinal: string; estado: 'PENDIENTE' | 'PAGADA';
+  numero: number; fechaVencimiento: string; saldoInicial: string; interes: string; amortizacion: string; montoCuota: string; saldoFinal: string; estado: 'PENDIENTE' | 'PAGADA' | 'GRACIA';
   pago: null | { fechaPagoReal: string; diasMora: number; montoMora: string; montoTotal: string; medioPago: string };
 }
 interface Cronograma {
   vistaPrevia: boolean; editable: boolean; motivoNoEditable: string | null;
   compra: { id: string; estado: string; fechaHora: string; nCuotas: number; cliente: { id: string; nombre: string; dni: string } };
   proxima: null | { cuotaId: string; numero: number; fechaVencimiento: string; montoCuota: string; diasMoraSugeridos: number };
-  resumen: { periodoCuota: string; capitalInicial: string; diasGracia: number; fechaFinGracia: string; interesGracia: string; capitalFinanciado: string; temPct: string; teaPct: string; cuotaRegular: string; totalIntereses: string; totalProgramado: string };
+  resumen: { periodoCuota: string; capitalInicial: string; cuotasGracia: number; interesGracia: string; capitalFinanciado: string; temPct: string; teaPct: string; cuotaRegular: string; totalIntereses: string; totalProgramado: string };
   cuotas: CuotaFila[];
 }
 interface PagoCalc {
@@ -39,7 +39,7 @@ export default function CronogramaPagos() {
 
   return (
     <>
-      <Encabezado ruta="Cronograma de pagos" titulo="Cronograma de pagos" sub="Cuotas del método francés de cada compra: define los días de gracia, controla la mora y cobra la próxima cuota." />
+      <Encabezado ruta="Cronograma de pagos" titulo="Cronograma de pagos" sub="Cuotas del método francés de cada compra: define las cuotas de gracia, controla la mora y cobra la próxima cuota." />
       <div className="card mb20">
         {compras.cargando && !compras.datos ? <Cargando /> : compras.error ? <Errores error={compras.error} /> : !compras.datos?.length ? (
           <Vacio texto="Aún no hay compras al crédito. Registra una en Compras para ver su cronograma." />
@@ -66,7 +66,7 @@ export default function CronogramaPagos() {
 }
 
 function Detalle({ id }: { id: string }) {
-  // Días de gracia en edición; al cambiar se pide una vista previa sin guardar.
+  // Cuotas de gracia en edición; al cambiar se pide una vista previa sin guardar.
   const [gracia, setGracia] = useState<string>('');
   const [vista, setVista] = useState<Cronograma | null>(null);
   const [errGracia, setErrGracia] = useState<string | null>(null);
@@ -75,17 +75,18 @@ function Detalle({ id }: { id: string }) {
   const base = useCarga(() => api.get<Cronograma>(`/cronograma/${id}`), [id]);
 
   useEffect(() => {
-    if (base.datos && gracia === '') setGracia(String(base.datos.resumen.diasGracia));
+    if (base.datos && gracia === '') setGracia(String(base.datos.resumen.cuotasGracia));
   }, [base.datos, gracia]);
 
   useEffect(() => {
     if (!base.datos || gracia === '') return;
-    const dias = Number(gracia);
-    if (!Number.isInteger(dias) || dias < 0 || dias > 90) { setVista(null); setErrGracia('Los días de gracia deben ser un entero entre 0 y 90'); return; }
+    const n = Number(gracia);
+    const maxG = Math.min(3, base.datos.compra.nCuotas - 1);
+    if (!Number.isInteger(n) || n < 0 || n > maxG) { setVista(null); setErrGracia(`Las cuotas de gracia deben ser un entero entre 0 y ${maxG}`); return; }
     setErrGracia(null);
-    if (dias === base.datos.resumen.diasGracia) { setVista(null); return; }
+    if (n === base.datos.resumen.cuotasGracia) { setVista(null); return; }
     const t = setTimeout(() => {
-      api.get<Cronograma>(`/cronograma/${id}?diasGracia=${dias}`).then(setVista).catch((e) => setErrGracia(e instanceof ApiError ? e.message : 'No se pudo calcular'));
+      api.get<Cronograma>(`/cronograma/${id}?cuotasGracia=${n}`).then(setVista).catch((e) => setErrGracia(e instanceof ApiError ? e.message : 'No se pudo calcular'));
     }, 300);
     return () => clearTimeout(t);
   }, [gracia, base.datos, id]);
@@ -94,7 +95,7 @@ function Detalle({ id }: { id: string }) {
     setErrGracia(null);
     setAplicando(true);
     try {
-      await api.patch(`/cronograma/${id}/gracia`, { diasGracia: Number(gracia) });
+      await api.patch(`/cronograma/${id}/gracia`, { cuotasGracia: Number(gracia) });
       setVista(null);
       await base.recargar();
     } catch (e) {
@@ -116,16 +117,18 @@ function Detalle({ id }: { id: string }) {
       <div className="row">
         <div className="card">
           <h2>Compra #{c.compra.id} · {c.compra.cliente.nombre} <Insignia estado={c.compra.estado} /></h2>
-          <Campo label="Días de gracia" ayuda="Días entre la compra y el primer pago. Durante la gracia no se paga, pero la deuda crece con la tasa de esos días (se capitaliza). Más gracia = cuotas un poco más altas. De 0 a 90.">
-            <input type="number" min="0" max="90" value={gracia} onChange={(e) => setGracia(e.target.value)} disabled={!c.editable} />
+          <Campo label="Cuotas de gracia" ayuda="Cuotas al inicio en las que no se paga: el interés de cada una se suma al saldo (se capitaliza) y ese total es el saldo inicial de la cuota siguiente. Cuentan dentro del total de cuotas. Más gracia = cuotas un poco más altas. Solo se puede cambiar mientras no se haya pagado ninguna cuota.">
+            <select value={gracia} onChange={(e) => setGracia(e.target.value)} disabled={!c.editable}>
+              {Array.from({ length: Math.min(3, c.compra.nCuotas - 1) + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
+            </select>
           </Campo>
           {!c.editable && <div className="note warn">{c.motivoNoEditable}</div>}
           {c.editable && previa && (
             <div className="note info">
-              Vista previa con {gracia} días de gracia (el cronograma guardado tiene {c.resumen.diasGracia}). Nada se ha guardado todavía.
+              Vista previa con {gracia} cuotas de gracia (el cronograma guardado tiene {c.resumen.cuotasGracia}). Nada se ha guardado todavía.
               <div className="mt8" style={{ display: 'flex', gap: 8 }}>
-                <button className="btn pri sm" onClick={aplicarGracia} disabled={aplicando}>{aplicando ? 'Aplicando…' : 'Aplicar días de gracia'}</button>
-                <button className="btn sm" onClick={() => setGracia(String(c.resumen.diasGracia))}>Descartar</button>
+                <button className="btn pri sm" onClick={aplicarGracia} disabled={aplicando}>{aplicando ? 'Aplicando…' : 'Aplicar cuotas de gracia'}</button>
+                <button className="btn sm" onClick={() => setGracia(String(c.resumen.cuotasGracia))}>Descartar</button>
               </div>
             </div>
           )}
@@ -134,9 +137,8 @@ function Detalle({ id }: { id: string }) {
         <div className="card">
           <h2>Resumen del crédito {previa && <span className="badge amb">Vista previa</span>}</h2>
           <Kv k="Capital (precio al contado)" v={money(r.capitalInicial)} />
-          <Kv k="Días de gracia" v={r.diasGracia} />
-          <Kv k="Fin de gracia (primer pago un mes después)" v={fd(r.fechaFinGracia)} />
-          <Kv k="Interés de la gracia" v={money(r.interesGracia)} />
+          <Kv k="Cuotas de gracia (el interés se capitaliza)" v={r.cuotasGracia} />
+          <Kv k="Interés capitalizado en la gracia" v={money(r.interesGracia)} />
           <Kv k="Capital financiado" v={money(r.capitalFinanciado)} />
           <Kv k={`${siglaTasa(r.periodoCuota)} / TEA`} v={`${pct(r.temPct, 4)} / ${pct(r.teaPct, 4)}`} />
           <Kv k="Cuota regular" v={money(r.cuotaRegular)} grande />
@@ -158,9 +160,10 @@ function Detalle({ id }: { id: string }) {
                 <tr key={q.numero} style={esProxima ? { background: 'var(--pri-s)' } : undefined}>
                   <td className="b">{q.numero}</td><td>{fd(q.fechaVencimiento)}</td>
                   <td className="r">{money(q.saldoInicial)}</td><td className="r">{money(q.interes)}</td><td className="r">{money(q.amortizacion)}</td>
-                  <td className="r b">{money(q.montoCuota)}</td><td className="r">{money(q.saldoFinal)}</td>
+                  <td className="r b">{q.estado === 'GRACIA' ? '—' : money(q.montoCuota)}</td><td className="r">{money(q.saldoFinal)}</td>
                   <td>
                     <Insignia estado={q.estado} />
+                    {q.estado === 'GRACIA' && <div className="m sm">No se paga: el interés ({money(q.interes)}) se suma al saldo y pasa al saldo inicial de la cuota {q.numero + 1}</div>}
                     {q.pago && <div className="m sm">{fd(q.pago.fechaPagoReal)} · {q.pago.diasMora} d. mora · {money(q.pago.montoTotal)}</div>}
                     {esProxima && <div className="sm" style={{ color: 'var(--pri)', fontWeight: 600 }}>Próxima</div>}
                   </td>
@@ -177,7 +180,7 @@ function Detalle({ id }: { id: string }) {
 
       {ok && <div className="note good mb20">{ok}</div>}
       {previa ? (
-        <div className="note warn">Aplica o descarta la vista previa de los días de gracia para poder cobrar cuotas.</div>
+        <div className="note warn">Aplica o descarta la vista previa de las cuotas de gracia para poder cobrar cuotas.</div>
       ) : c.proxima ? (
         <PagoProxima key={`${id}-${c.proxima.numero}`} compraId={id} cronograma={c} onPagado={async (m) => { setOk(m); await base.recargar(); }} />
       ) : (

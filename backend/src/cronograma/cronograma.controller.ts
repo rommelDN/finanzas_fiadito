@@ -3,10 +3,11 @@ import { MedioPago } from '@prisma/client';
 import { IsEnum, IsInt, IsNumber, IsOptional, Matches, Max, Min } from 'class-validator';
 import { CurrentUser, Roles, UsuarioActual } from '../common/decorators';
 import { ParseBigIntPipe } from '../common/parse-bigint.pipe';
+import { MAX_CUOTAS_GRACIA } from '../parametros/parametros.service';
 import { CronogramaService } from './cronograma.service';
 
 class GraciaDto {
-  @IsInt() @Min(0) @Max(90) diasGracia: number;
+  @IsInt() @Min(0) @Max(MAX_CUOTAS_GRACIA) cuotasGracia: number;
 }
 
 class PagarDto {
@@ -34,15 +35,15 @@ const entero = (s?: string) => (s !== undefined && s !== '' && /^\d{1,4}$/.test(
 export class CronogramaController {
   constructor(private readonly svc: CronogramaService) {}
 
-  /** Cronograma; con ?diasGracia= distinto del guardado devuelve una vista previa sin guardar. */
+  /** Cronograma; con ?cuotasGracia= distinto del guardado devuelve una vista previa sin guardar. */
   @Get(':compraId')
-  obtener(@CurrentUser() u: UsuarioActual, @Param('compraId', ParseBigIntPipe) id: bigint, @Query('diasGracia') diasGracia?: string) {
-    return this.svc.obtener(u.tiendaId!, id, entero(diasGracia));
+  obtener(@CurrentUser() u: UsuarioActual, @Param('compraId', ParseBigIntPipe) id: bigint, @Query('cuotasGracia') cuotasGracia?: string) {
+    return this.svc.obtener(u.tiendaId!, id, entero(cuotasGracia));
   }
 
   @Patch(':compraId/gracia')
   gracia(@CurrentUser() u: UsuarioActual, @Param('compraId', ParseBigIntPipe) id: bigint, @Body() dto: GraciaDto) {
-    return this.svc.cambiarGracia(u.tiendaId!, id, dto.diasGracia);
+    return this.svc.cambiarGracia(u.tiendaId!, id, dto.cuotasGracia);
   }
 
   /** Cálculo del pago de la próxima cuota con los días de mora indicados. */

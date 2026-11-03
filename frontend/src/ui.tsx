@@ -80,7 +80,7 @@ export function Tip({ texto }: { texto: string }) {
 export function Insignia({ estado }: { estado: string }) {
   const clase: Record<string, string> = {
     ACTIVO: 'ok', ACTIVA: 'ok', PAGADO: 'ok', PAGADA: 'ok', CANCELADA: 'gray', VIGENTE: 'pri-b',
-    INACTIVO: 'gray', INACTIVA: 'gray', PENDIENTE: 'amb', MORA: 'red', CUOTA: 'pri-b',
+    INACTIVO: 'gray', INACTIVA: 'gray', PENDIENTE: 'amb', GRACIA: 'pri-b', MORA: 'red', CUOTA: 'pri-b',
   };
   return <span className={`badge ${clase[estado] ?? 'gray'}`}>{estado}</span>;
 }

@@ -35,9 +35,9 @@ describe('Resumen del inicio (e2e)', () => {
     await api().post('/api/compras').set(auth('ltorres')).send(cuerpoCompra(rosaId, '2026-09-15T10:30', CR1, 3)).expect(201);
 
     const r = await api().get('/api/resumen').set(auth('ltorres')).expect(200);
-    expect(r.body.totales).toMatchObject({ deudaPendiente: '132.74', creditoDisponible: '467.26' });
+    expect(r.body.totales).toMatchObject({ deudaPendiente: '131.30', creditoDisponible: '468.70' });
     const rosa = r.body.clientes.find((c: any) => c.id === rosaId);
-    expect(rosa).toMatchObject({ limiteCredito: '250.00', deudaPendiente: '132.74', creditoDisponible: '117.26' });
+    expect(rosa).toMatchObject({ limiteCredito: '250.00', deudaPendiente: '131.30', creditoDisponible: '118.70' });
     expect(r.body.comprasRecientes).toHaveLength(1);
 
     // Las cuotas vencidas se separan de las que están por vencer, según la fecha de hoy.
@@ -49,9 +49,9 @@ describe('Resumen del inicio (e2e)', () => {
   it('el pago de una cuota baja la deuda y la saca de la mora', async () => {
     const compra = await db.compra.findFirstOrThrow({ where: { clienteId: BigInt(rosaId) } });
     await api().post(`/api/cronograma/${compra.id}/pagar`).set(auth('ltorres'))
-      .send({ numeroCuota: 1, medioPago: 'EFECTIVO', montoPagado: 46.95, diasMora: 0 }).expect(201);
+      .send({ numeroCuota: 1, medioPago: 'EFECTIVO', montoPagado: 46.44, diasMora: 0 }).expect(201);
     const r = await api().get('/api/resumen').set(auth('ltorres')).expect(200);
-    expect(r.body.totales.deudaPendiente).toBe('89.80'); // 132.74 − 42.94
+    expect(r.body.totales.deudaPendiente).toBe('88.83'); // 131.30 − 42.47
     expect(r.body.cuotasVencidas.length + r.body.proximosVencimientos.length).toBe(2);
   });
 
