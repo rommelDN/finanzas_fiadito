@@ -24,9 +24,9 @@ const PROD: Record<string, number> = {
 };
 
 const CLI = {
-  rosa: { tasaInteres: '6.1363551', periodoTasa: 'BIMESTRAL' as Periodo, tasaMora: '6.1208', periodoTasaMora: 'SEMESTRAL' as Periodo, diaCorte: 20, horaCorte: '23:59', diaPago: 26 },
-  carlos: { tasaInteres: '20.0000000', periodoTasa: 'SEMESTRAL' as Periodo, tasaMora: '6.0', periodoTasaMora: 'SEMESTRAL' as Periodo, diaCorte: 25, horaCorte: '23:59', diaPago: 5 },
-  mario: { tasaInteres: '1.5105456', periodoTasa: 'QUINCENAL' as Periodo, tasaMora: '0.4007475', periodoTasaMora: 'QUINCENAL' as Periodo, diaCorte: 20, horaCorte: '23:59', diaPago: 26 },
+  rosa: { tasaInteres: '6.1363551', periodoTasa: 'BIMESTRAL' as Periodo, tasaMora: '6.1208', periodoTasaMora: 'SEMESTRAL' as Periodo },
+  carlos: { tasaInteres: '20.0000000', periodoTasa: 'SEMESTRAL' as Periodo, tasaMora: '6.0', periodoTasaMora: 'SEMESTRAL' as Periodo },
+  mario: { tasaInteres: '1.5105456', periodoTasa: 'QUINCENAL' as Periodo, tasaMora: '0.4007475', periodoTasaMora: 'QUINCENAL' as Periodo },
 };
 
 describe('Tasas', () => {

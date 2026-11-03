@@ -20,7 +20,7 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
   const clienteValido = (dni: string, extra: object = {}) => ({
     dni, nombres: 'Prueba', apellidos: 'E2E',
     tasaInteres: 6.1363551, periodoTasa: 'BIMESTRAL', tasaMora: 6.1208, periodoTasaMora: 'SEMESTRAL',
-    limiteCredito: 200, maxCuotas: 4, diaCorte: 20, horaCorte: '23:59', diaPago: 26, aceptaPrivacidad: true,
+    limiteCredito: 200, maxCuotas: 4, aceptaPrivacidad: true,
     ...extra,
   });
 
@@ -156,7 +156,7 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
   describe('clientes y topes de TEA', () => {
     it('crea un cliente (sin cuenta de acceso) y devuelve los cálculos de tasas', async () => {
       const r = await api().post('/api/clientes').set(auth('ltorres')).send(clienteValido('70000001')).expect(201);
-      expect(r.body).toMatchObject({ dni: '70000001', horaCorte: '23:59', estado: 'ACTIVO', limiteCredito: '200' });
+      expect(r.body).toMatchObject({ dni: '70000001', estado: 'ACTIVO', limiteCredito: '200' });
       expect(r.body.calculos).toMatchObject({ p: 60, pMora: 180 });
       expect(Number(r.body.calculos.teaInteresPct)).toBeGreaterThan(40);
       expect(Number(r.body.calculos.teaInteresPct)).toBeLessThan(45);
@@ -209,8 +209,8 @@ describe('Tiendas, productos, clientes y parámetros (e2e)', () => {
     it('actualiza datos, revalida tasas y no cambia el DNI', async () => {
       const lista = await api().get('/api/clientes?q=70000001').set(auth('ltorres')).expect(200);
       const id = lista.body[0].id;
-      const u = await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ limiteCredito: 150, horaCorte: '18:30' }).expect(200);
-      expect(u.body).toMatchObject({ limiteCredito: '150', horaCorte: '18:30' });
+      const u = await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ limiteCredito: 150 }).expect(200);
+      expect(u.body).toMatchObject({ limiteCredito: '150' });
       await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ limiteCredito: 300 }).expect(400);
       await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ tasaInteres: 10, periodoTasa: 'MENSUAL' }).expect(400);
       await api().patch(`/api/clientes/${id}`).set(auth('ltorres')).send({ dni: '99999999' }).expect(200);

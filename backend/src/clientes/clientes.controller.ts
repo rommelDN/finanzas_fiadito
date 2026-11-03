@@ -41,9 +41,6 @@ class CrearClienteDto extends TasasDto {
   @Max(LIMITE_MAXIMO_CREDITO, { message: `El límite de crédito no puede superar S/ ${LIMITE_MAXIMO_CREDITO}` })
   limiteCredito: number;
   @IsInt() @Min(1) @Max(MAX_CUOTAS) maxCuotas: number;
-  @IsInt() @Min(1) @Max(31) diaCorte: number;
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'horaCorte debe ser HH:mm' }) horaCorte: string;
-  @IsInt() @Min(1) @Max(31) diaPago: number;
 
   @IsBoolean() @Equals(true, { message: 'El cliente debe aceptar la política de privacidad (Ley 29733)' })
   aceptaPrivacidad: boolean;

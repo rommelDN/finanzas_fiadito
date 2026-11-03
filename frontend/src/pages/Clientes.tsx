@@ -6,7 +6,7 @@ interface Calculos { p: number; pMora: number; tem: string; temPct: string; teaI
 interface Cliente {
   id: string; dni: string; nombres: string; apellidos: string; direccion: string | null; telefono: string | null;
   tasaInteres: string; periodoTasa: string; tasaMora: string; periodoTasaMora: string; limiteCredito: string; maxCuotas: number;
-  diaCorte: number; horaCorte: string; diaPago: number; aceptaPrivacidad: boolean; estado: string; calculos: Calculos;
+  aceptaPrivacidad: boolean; estado: string; calculos: Calculos;
 }
 interface Prevision { ok: boolean; errores: string[]; calculos: Calculos; topes: { topeInteresTEA: string; topeMoraTEA: string } }
 interface Resumen { clientes: { id: string; deudaPendiente: string }[] }
@@ -14,7 +14,7 @@ interface Resumen { clientes: { id: string; deudaPendiente: string }[] }
 const VACIO = {
   dni: '', nombres: '', apellidos: '', direccion: '', telefono: '',
   tasaInteres: '', periodoTasa: 'MENSUAL', tasaMora: '', periodoTasaMora: 'ANUAL',
-  limiteCredito: '', maxCuotas: '8', diaCorte: '20', horaCorte: '23:59', diaPago: '26',
+  limiteCredito: '', maxCuotas: '8',
   aceptaPrivacidad: false, estado: 'ACTIVO',
 };
 type Form = typeof VACIO;
@@ -51,8 +51,8 @@ export default function Clientes() {
     setF(c ? {
       dni: c.dni, nombres: c.nombres, apellidos: c.apellidos, direccion: c.direccion ?? '', telefono: c.telefono ?? '',
       tasaInteres: String(Number(c.tasaInteres)), periodoTasa: c.periodoTasa, tasaMora: String(Number(c.tasaMora)), periodoTasaMora: c.periodoTasaMora,
-      limiteCredito: String(Number(c.limiteCredito)), maxCuotas: String(c.maxCuotas), diaCorte: String(c.diaCorte), horaCorte: c.horaCorte,
-      diaPago: String(c.diaPago), aceptaPrivacidad: c.aceptaPrivacidad, estado: c.estado,
+      limiteCredito: String(Number(c.limiteCredito)), maxCuotas: String(c.maxCuotas),
+      aceptaPrivacidad: c.aceptaPrivacidad, estado: c.estado,
     } : VACIO);
   }
 
@@ -63,7 +63,7 @@ export default function Clientes() {
     const cuerpo: Record<string, unknown> = {
       nombres: f.nombres.trim(), apellidos: f.apellidos.trim(), direccion: f.direccion.trim() || undefined, telefono: f.telefono.trim() || undefined,
       tasaInteres: Number(f.tasaInteres), periodoTasa: f.periodoTasa, tasaMora: Number(f.tasaMora), periodoTasaMora: f.periodoTasaMora,
-      limiteCredito: Number(f.limiteCredito), maxCuotas: Number(f.maxCuotas), diaCorte: Number(f.diaCorte), horaCorte: f.horaCorte, diaPago: Number(f.diaPago),
+      limiteCredito: Number(f.limiteCredito), maxCuotas: Number(f.maxCuotas),
     };
     try {
       if (editando === 'nuevo') {
@@ -99,7 +99,7 @@ export default function Clientes() {
   const nuevo = editando === 'nuevo';
   return (
     <>
-      <Encabezado ruta="Clientes" titulo="Clientes" sub="Vecinos a quienes les fías, con su tasa pactada, límite y fechas de corte y pago.">
+      <Encabezado ruta="Clientes" titulo="Clientes" sub="Vecinos a quienes les fías, con su tasa pactada, límite y plazo de pago.">
         <button className="btn pri" onClick={() => abrir()}>+ Nuevo cliente</button>
       </Encabezado>
 
@@ -140,17 +140,6 @@ export default function Clientes() {
               </Campo>
               <Campo label="Máximo de cuotas" ayuda="Referencial: hoy todos los créditos se otorgan en exactamente 8 cuotas, sin importar este valor.">
                 <input type="number" min="1" max="8" value={f.maxCuotas} onChange={(e) => set('maxCuotas', e.target.value)} required />
-              </Campo>
-            </div>
-            <div className="frow">
-              <Campo label="Día de corte" ayuda="Día del mes en que se cierra el ciclo de facturación: define a qué mes pertenece el vencimiento de cada cuota (1 a 31; si el mes es más corto, el último día).">
-                <input type="number" min="1" max="31" value={f.diaCorte} onChange={(e) => set('diaCorte', e.target.value)} required />
-              </Campo>
-              <Campo label="Hora de corte" ayuda="Hasta qué hora del día de corte entran las compras al ciclo. Pasada esa hora, la compra va al ciclo siguiente.">
-                <input type="time" value={f.horaCorte} onChange={(e) => set('horaCorte', e.target.value)} required />
-              </Campo>
-              <Campo label="Día de pago" ayuda="Día del mes en que vencen sus cuotas (1 a 31). Es el primer día de pago posterior al corte.">
-                <input type="number" min="1" max="31" value={f.diaPago} onChange={(e) => set('diaPago', e.target.value)} required />
               </Campo>
             </div>
             {nuevo ? (
@@ -201,7 +190,7 @@ export default function Clientes() {
         </div>
         {cargando && !datos ? <Cargando /> : error ? <Errores error={error} /> : !datos?.length ? <Vacio texto="No hay clientes." /> : (
           <Tabla>
-            <thead><tr><th>Cliente</th><th>Tasa pactada</th><th className="r">TEA</th><th className="r">Límite</th><th className="r">Deuda</th><th>Corte / pago</th><th>Estado</th><th /></tr></thead>
+            <thead><tr><th>Cliente</th><th>Tasa pactada</th><th className="r">TEA</th><th className="r">Límite</th><th className="r">Deuda</th><th>Estado</th><th /></tr></thead>
             <tbody>
               {datos.map((c) => (
                 <tr key={c.id}>
@@ -210,7 +199,6 @@ export default function Clientes() {
                   <td className="r">{pct(c.calculos.teaInteresPct, 2)}</td>
                   <td className="r">{money(c.limiteCredito)}</td>
                   <td className="r">{deuda.has(c.id) ? money(deuda.get(c.id)) : '—'}</td>
-                  <td>día {c.diaCorte} ({c.horaCorte}) / día {c.diaPago}</td>
                   <td><Insignia estado={c.estado} /></td>
                   <td className="r">
                     <button className="btn sm" onClick={() => abrir(c)}>Editar</button>{' '}

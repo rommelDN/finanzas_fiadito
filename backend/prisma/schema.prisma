@@ -189,9 +189,6 @@ model Cliente {
   periodoTasaMora  Periodo      @map("periodo_tasa_mora")
   limiteCredito    Decimal      @map("limite_credito") @db.Decimal(12, 2)
   maxCuotas        Int          @map("max_cuotas") @db.TinyInt
-  diaCorte         Int          @map("dia_corte") @db.TinyInt
-  horaCorte        DateTime     @map("hora_corte") @db.Time(0)
-  diaPago          Int          @map("dia_pago") @db.TinyInt
   // Ley 29733
   aceptaPrivacidad Boolean      @default(false) @map("acepta_privacidad")
   estado           EstadoActivo @default(ACTIVO)

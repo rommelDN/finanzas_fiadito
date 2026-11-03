@@ -11,6 +11,7 @@
 > - **Pantallas:** Inicio, Productos, Clientes, Compras, **Cronograma de pagos**, Parámetros (+ Tiendas para el administrador del sistema). No hay pantallas de Pagos, Bitácora ni Cómo funciona (la bitácora se sigue registrando en la BD).
 > - **Cronograma de pagos:** cronograma del método francés por compra, con **días de gracia editables** (recalcula y guarda mientras no se haya pagado ninguna cuota ), **días de mora** y botón **Pagar** que cobra la próxima cuota completa (mora → interés → capital, sin pagos parciales ni duplicados). El pago es **por cuota**.
 > - **Gracia por cuotas (2026-11-02):** ya no hay días de gracia ni ciclo corte/pago en el cálculo. Se eligen 0 a 3 *cuotas de gracia* (dentro de las 8): en ellas no se paga, el interés del período se suma al saldo (se capitaliza) y ese saldo final es el saldo inicial de la cuota siguiente; las demás cuotas amortizan el saldo capitalizado con cuota constante. La primera fila vence un período después de la compra. Ignorar las secciones de este documento sobre días de gracia, corte y fecha de pago.
+> - **Cliente sin corte/pago (2026-11-02):** se eliminaron día de corte, hora de corte y día de pago del cliente (campos, formulario y columnas). Ignorar lo que este documento diga de ellos.
 > - **Sin Estado de cuenta (2026-11-02):** se eliminó esa pantalla y su funcionalidad (módulo, tablas `estado_cuenta` y `estado_cuenta_item`, tarea diaria de cortes). Ignorar las secciones de este documento sobre estado de cuenta; el cobro se hace solo desde el cronograma de pagos.
 
 

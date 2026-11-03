@@ -20,18 +20,13 @@ export interface DatosCliente extends DatosTasas {
   telefono?: string;
   limiteCredito: number;
   maxCuotas: number;
-  diaCorte: number;
-  horaCorte: string; // HH:mm
-  diaPago: number;
   aceptaPrivacidad: boolean;
   estado?: EstadoActivo;
 }
 
-const aHora = (hhmm: string) => new Date(`1970-01-01T${hhmm}:00Z`);
-const deHora = (d: Date) => d.toISOString().slice(11, 16);
 
-/** Cliente con sus cálculos de tasas (panel "Lo que calcula la app") y la hora como HH:mm. */
-const presentar = (c: Cliente) => ({ ...c, horaCorte: deHora(c.horaCorte), calculos: resumenTasas(c) });
+/** Cliente con sus cálculos de tasas (panel "Lo que calcula la app"). */
+const presentar = (c: Cliente) => ({ ...c, calculos: resumenTasas(c) });
 
 const resumenTasas = (c: DatosTasas | Cliente) => {
   const t = calcularTasas({
@@ -104,9 +99,8 @@ export class ClientesService {
       throw new ConflictException('Ya existe un cliente con ese DNI en la tienda');
     }
     await this.exigirTopes(d);
-    const { horaCorte, ...resto } = d;
     const creado = await this.prisma.cliente.create({
-      data: { ...resto, horaCorte: aHora(horaCorte), tienda: { connect: { id: tiendaId } } },
+      data: { ...d, tienda: { connect: { id: tiendaId } } },
     });
     return presentar(creado);
   }
@@ -124,10 +118,9 @@ export class ClientesService {
         periodoTasaMora: d.periodoTasaMora ?? actual.periodoTasaMora,
       });
     }
-    const { horaCorte, ...resto } = d;
     const actualizado = await this.prisma.cliente.update({
       where: { id },
-      data: { ...resto, ...(horaCorte ? { horaCorte: aHora(horaCorte) } : {}) },
+      data: d,
     });
     return presentar(actualizado);
   }

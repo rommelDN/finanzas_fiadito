@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 // Clave de demostración para TODAS las cuentas del seed. Cambiarla fuera de desarrollo.
 const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'Fiadito2026!';
 const utcDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
-const hora = (hhmm: string) => new Date(`1970-01-01T${hhmm}:00Z`);
 
 async function main() {
   const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
@@ -85,11 +84,11 @@ async function main() {
   const clientes: {
     dni: string; nombres: string; apellidos: string;
     tasa: string; per: Periodo; mora: string; perMora: Periodo;
-    limite: string; maxCuotas: number; corte: number; pago: number;
+    limite: string; maxCuotas: number;
   }[] = [
-    { dni: '40000001', nombres: 'Rosa', apellidos: 'Quispe Huamán', tasa: '6.1363551', per: 'BIMESTRAL', mora: '6.1208000', perMora: 'SEMESTRAL', limite: '250.00', maxCuotas: 8, corte: 20, pago: 26 },
-    { dni: '40000002', nombres: 'Carlos', apellidos: 'Mendoza Ríos', tasa: '20.0000000', per: 'SEMESTRAL', mora: '6.0000000', perMora: 'SEMESTRAL', limite: '200.00', maxCuotas: 8, corte: 25, pago: 5 },
-    { dni: '40000003', nombres: 'Mario', apellidos: 'Paredes Salas', tasa: '1.5105456', per: 'QUINCENAL', mora: '0.4007475', perMora: 'QUINCENAL', limite: '150.00', maxCuotas: 8, corte: 20, pago: 26 },
+    { dni: '40000001', nombres: 'Rosa', apellidos: 'Quispe Huamán', tasa: '6.1363551', per: 'BIMESTRAL', mora: '6.1208000', perMora: 'SEMESTRAL', limite: '250.00', maxCuotas: 8 },
+    { dni: '40000002', nombres: 'Carlos', apellidos: 'Mendoza Ríos', tasa: '20.0000000', per: 'SEMESTRAL', mora: '6.0000000', perMora: 'SEMESTRAL', limite: '200.00', maxCuotas: 8 },
+    { dni: '40000003', nombres: 'Mario', apellidos: 'Paredes Salas', tasa: '1.5105456', per: 'QUINCENAL', mora: '0.4007475', perMora: 'QUINCENAL', limite: '150.00', maxCuotas: 8 },
   ];
   for (const c of clientes) {
     await prisma.cliente.upsert({
@@ -99,7 +98,7 @@ async function main() {
       create: {
         tiendaId: tienda.id, dni: c.dni, nombres: c.nombres, apellidos: c.apellidos,
         tasaInteres: c.tasa, periodoTasa: c.per, tasaMora: c.mora, periodoTasaMora: c.perMora,
-        limiteCredito: c.limite, maxCuotas: c.maxCuotas, diaCorte: c.corte, horaCorte: hora('23:59'), diaPago: c.pago,
+        limiteCredito: c.limite, maxCuotas: c.maxCuotas,
         aceptaPrivacidad: true,
       },
     });
