@@ -1,8 +1,8 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ApiError } from '../api';
 import { useAuth } from '../auth';
-import { Campo, Errores } from '../ui';
+import { Campo } from '../ui';
 
 export default function Login() {
   const { usuario, login } = useAuth();
@@ -10,6 +10,12 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   if (usuario) return <Navigate to="/" replace />;
 
@@ -28,6 +34,12 @@ export default function Login() {
 
   return (
     <div className="login">
+      {error && (
+        <div className="toast err" role="alert">
+          <span>⚠ {error}</span>
+          <button type="button" onClick={() => setError(null)} aria-label="Cerrar">×</button>
+        </div>
+      )}
       <div className="brand">
         <div className="logo" style={{ padding: 0 }}>
           <div className="sq">F</div>
@@ -51,7 +63,6 @@ export default function Login() {
           <Campo label="Contraseña" ayuda="Tu clave personal. Se guarda cifrada y nunca se muestra.">
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required maxLength={100} />
           </Campo>
-          <Errores error={error} />
           <button className="btn pri mt16" style={{ width: '100%' }} disabled={enviando}>
             {enviando ? 'Ingresando…' : 'Ingresar'}
           </button>
