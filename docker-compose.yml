@@ -36,6 +36,7 @@ services:
       TZ: America/Lima
     volumes:
       - ./backend:/app
+      - backend_node_modules:/app/node_modules
     command: sh -c "npm install --no-audit --no-fund && npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run start:dev"
     ports:
       - "3000:3000"
@@ -52,9 +53,12 @@ services:
       VITE_API_TARGET: http://backend:3000
     volumes:
       - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
     command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
     ports:
       - "5173:5173"
 
 volumes:
   db_data:
+  backend_node_modules:
+  frontend_node_modules:
