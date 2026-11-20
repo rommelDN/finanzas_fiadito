@@ -116,7 +116,7 @@ export default function Productos() {
           </div>
           <div className="frow">
             <Campo label="Precio al contado" ayuda="Es el precio que se usa en todos los cálculos del crédito. La app agrega los intereses aparte.">
-              <input type="number" step="0.01" min="0.01" max="250" value={f.precioContado} onChange={(e) => set('precioContado', e.target.value)} required />
+              <input type="number" step="0.1" min="0.1" max="250" value={f.precioContado} onChange={(e) => set('precioContado', e.target.value)} required />
             </Campo>
             <Campo label="Precio de lista (crédito)" ayuda="Precio referencial para mostrar al cliente. No entra en ningún cálculo: el interés se calcula sobre el precio al contado.">
               <input type="number" step="0.01" min="0" max="250" value={f.precioCredito} onChange={(e) => set('precioCredito', e.target.value)} />

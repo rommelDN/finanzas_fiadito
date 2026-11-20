@@ -54,16 +54,30 @@ export const cronogramaConGracia = (
   }
   const Cg = saldo; // capital financiado = capital + intereses capitalizados
   const m = n - cuotasGracia;
-  const R = tem.gt(0) ? red2(Cg.times(tem).div(dec(1).minus(dec(1).plus(tem).pow(-m)))) : red2(Cg.div(m));
+  const RExact = tem.gt(0)
+  ? Cg.times(tem).div(dec(1).minus(dec(1).plus(tem).pow(-m)))
+  : Cg.div(m);
+
+  const R = red2(RExact);
   for (let k = cuotasGracia + 1; k <= n; k++) {
-    const interes = red2(saldo.times(tem));
-    const ultima = k === n;
-    const amortizacion = ultima ? saldo : R.minus(interes);
-    const monto = ultima ? amortizacion.plus(interes) : R;
+    const interes = saldo.times(tem);
+    const amortizacion = RExact.minus(interes);
+    const monto = RExact;
     const saldoFinal = saldo.minus(amortizacion);
-    cuotas.push({ numero: k, vencimiento: venc(k), saldoInicial: saldo, interes, amortizacion, monto, saldoFinal, gracia: false });
+
+    cuotas.push({
+      numero: k,
+      vencimiento: venc(k),
+      saldoInicial: saldo,
+      interes,
+      amortizacion,
+      monto,
+      saldoFinal,
+      gracia: false,
+    });
+
     saldo = saldoFinal;
-  }
+}
   return { capitalFinanciado: Cg, cuotaRegular: R, cuotas };
 };
 

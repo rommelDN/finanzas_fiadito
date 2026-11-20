@@ -143,9 +143,11 @@ function NuevaCompra({ onListo, onCancelar }: { onListo: (id: string) => void; o
                 {credito.map((p) => <option key={p.id} value={p.codigo}>{p.descripcion} — {money(p.precioContado)}</option>)}
               </select>
             </Campo>
-            <Campo label={k === 0 ? 'Cantidad' : ' '} ayuda="Cuántas unidades (admite hasta 3 decimales, ej. 1.5 kg)." ancho={110}>
-              <input type="number" min="0.001" step="0.001" value={it.cantidad} onChange={(e) => setItem(k, { cantidad: e.target.value })} />
-            </Campo>
+            <Campo label={k === 0 ? 'Cantidad' : ' '} ayuda="Cuántas unidades" ancho={110}>
+              <input type="number" min="1" step="1" value={it.cantidad} onChange={(e) => { const valor = e.target.value; if (valor === '' || /^\d+$/.test(valor)) { setItem(k, { cantidad: valor }); }
+                }}
+              />
+          </Campo>
             <button type="button" className="btn sm danger" style={{ marginTop: k === 0 ? 28 : 6 }} disabled={items.length === 1} onClick={() => setItems((xs) => xs.filter((_, i) => i !== k))}>Quitar</button>
           </div>
         ))}

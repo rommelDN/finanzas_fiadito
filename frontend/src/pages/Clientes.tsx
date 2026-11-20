@@ -120,7 +120,7 @@ export default function Clientes() {
             </div>
             <div className="frow">
               <Campo label="Tasa efectiva de interés (%)" ayuda="Tasa efectiva pactada para el crédito, en porcentaje (ej. 3 para 3 %). El periodo se elige al lado.">
-                <input type="number" step="0.0000001" min="0.0000001" value={f.tasaInteres} onChange={(e) => set('tasaInteres', e.target.value)} required />
+                <input type="number" step="0.1" min="0.1" value={f.tasaInteres} onChange={(e) => set('tasaInteres', e.target.value)} required />
               </Campo>
               <Campo label="Periodo de la tasa" ayuda="Cada cuánto se cobra esa tasa: mensual, bimestral, anual… La app la convierte a mes (TEM) y a año (TEA).">
                 <select value={f.periodoTasa} onChange={(e) => set('periodoTasa', e.target.value)}>{PERIODOS.map((p) => <option key={p}>{p}</option>)}</select>
@@ -136,7 +136,7 @@ export default function Clientes() {
             </div>
             <div className="frow">
               <Campo label="Límite de crédito (S/)" ayuda="Máximo que el cliente puede deber en capital, hasta S/ 250 (créditos pequeños). No se aceptan compras que lo excedan.">
-                <input type="number" step="0.01" min="0.01" max="250" value={f.limiteCredito} onChange={(e) => set('limiteCredito', e.target.value)} required />
+                <input type="number" step="1" min="1" max="250" value={f.limiteCredito} onChange={(e) => set('limiteCredito', e.target.value)} required />
               </Campo>
               <Campo label="Máximo de cuotas" ayuda="Referencial: hoy todos los créditos se otorgan en exactamente 8 cuotas, sin importar este valor.">
                 <input type="number" min="1" max="8" value={f.maxCuotas} onChange={(e) => set('maxCuotas', e.target.value)} required />
